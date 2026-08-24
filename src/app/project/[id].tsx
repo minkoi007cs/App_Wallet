@@ -18,6 +18,8 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useProjectDetail } from '@/hooks/useProjects';
+import { useProjectRepositories } from '@/hooks/useGitHub';
+import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -32,8 +34,12 @@ const QUICK_ACTIONS = [
 export default function ProjectDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { project, loading, error, reload } = useProjectDetail(id as string);
+  const projectId = id as string;
+  const { project, loading, error, reload } = useProjectDetail(projectId);
+  const { repositories, availableRepos, linkRepository, unlinkRepository } = useProjectRepositories(projectId);
+
   const [activeTab, setActiveTab] = useState<SubTab>('overview');
+  const [showLinkModal, setShowLinkModal] = useState(false);
 
   if (loading) {
     return (
@@ -56,6 +62,8 @@ export default function ProjectDetailScreen() {
       </Container>
     );
   }
+
+  const displayRepos = repositories.length > 0 ? repositories : (project.repositories || []);
 
   const getStatusBadge = (status: string) => {
     const variant: BadgeVariant =
@@ -170,7 +178,7 @@ export default function ProjectDetailScreen() {
                 { color: activeTab === 'repositories' ? colors.textPrimary : colors.textSecondary },
               ]}
             >
-              Repositories ({project.repositories?.length || 0})
+              Repositories ({displayRepos.length})
             </Text>
           </TouchableOpacity>
 
@@ -257,8 +265,16 @@ export default function ProjectDetailScreen() {
 
         {activeTab === 'repositories' && (
           <View style={styles.tabContent}>
-            {project.repositories && project.repositories.length > 0 ? (
-              project.repositories.map((repo) => (
+            <Button
+              title="+ Link GitHub Repository"
+              onPress={() => setShowLinkModal(true)}
+              variant="primary"
+              size="sm"
+              style={styles.linkRepoBtn}
+            />
+
+            {displayRepos.length > 0 ? (
+              displayRepos.map((repo) => (
                 <Card key={repo.id} style={styles.repoCard}>
                   <View style={styles.repoHeader}>
                     <View style={styles.repoTitleRow}>
@@ -293,13 +309,20 @@ export default function ProjectDetailScreen() {
                     </View>
                   )}
 
-                  <Button
-                    title="Open on GitHub"
-                    onPress={() => Linking.openURL(repo.url)}
-                    variant="outline"
-                    size="sm"
-                    style={styles.openBtn}
-                  />
+                  <View style={styles.repoActionRow}>
+                    <Button
+                      title="Open on GitHub"
+                      onPress={() => Linking.openURL(repo.url)}
+                      variant="outline"
+                      size="sm"
+                    />
+                    <Button
+                      title="Unlink"
+                      onPress={() => unlinkRepository(repo.id)}
+                      variant="danger"
+                      size="sm"
+                    />
+                  </View>
                 </Card>
               ))
             ) : (
@@ -340,6 +363,14 @@ export default function ProjectDetailScreen() {
           </View>
         )}
       </ScrollView>
+
+      <LinkRepositoryModal
+        visible={showLinkModal}
+        projectId={projectId}
+        availableRepos={availableRepos}
+        onClose={() => setShowLinkModal(false)}
+        onLink={linkRepository}
+      />
     </Container>
   );
 }
@@ -460,6 +491,10 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     marginTop: 2,
   },
+  linkRepoBtn: {
+    marginBottom: Spacing[3],
+    alignSelf: 'flex-start',
+  },
   repoCard: {
     padding: Spacing[4],
     marginBottom: Spacing[3],
@@ -505,8 +540,9 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     marginTop: 2,
   },
-  openBtn: {
-    alignSelf: 'flex-start',
+  repoActionRow: {
+    flexDirection: 'row',
+    gap: Spacing[2],
   },
   emptyCard: {
     padding: Spacing[6],
