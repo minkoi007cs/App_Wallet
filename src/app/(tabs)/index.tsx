@@ -11,12 +11,17 @@ import { ErrorState } from '@/components/ui/ErrorState';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useProjects } from '@/hooks/useProjects';
+import { useAnalytics } from '@/hooks/useAnalytics';
+import { StatusDistributionCard } from '@/components/analytics/StatusDistributionCard';
+import { TechStackCard } from '@/components/analytics/TechStackCard';
+import { UpcomingDeadlinesCard } from '@/components/analytics/UpcomingDeadlinesCard';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
   const { projects, stats, loading, error, reload } = useProjects();
+  const { analytics } = useAnalytics();
 
   const activeProjects = projects.filter((p) => p.status === 'active');
   const needsAttentionProjects = projects.filter((p) => p.health_status !== 'healthy');
@@ -87,6 +92,22 @@ export default function HomeScreen() {
           <ErrorState message={error} onRetry={reload} />
         ) : (
           <>
+            {/* Analytics Summary Charts */}
+            {analytics && (
+              <View style={styles.analyticsSection}>
+                <StatusDistributionCard
+                  averageProgress={analytics.averageProgress}
+                  statusBreakdown={analytics.statusBreakdown}
+                />
+
+                <TechStackCard techStack={analytics.topTechStack} />
+
+                {analytics.upcomingDeadlines.length > 0 && (
+                  <UpcomingDeadlinesCard deadlines={analytics.upcomingDeadlines} />
+                )}
+              </View>
+            )}
+
             {/* Today's Focus Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -203,8 +224,11 @@ const styles = StyleSheet.create({
     fontFamily: Typography.fontFamily.sans,
     marginTop: 2,
   },
+  analyticsSection: {
+    marginTop: Spacing[2],
+  },
   section: {
-    marginTop: Spacing[6],
+    marginTop: Spacing[4],
   },
   sectionHeader: {
     flexDirection: 'row',
