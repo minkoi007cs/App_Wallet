@@ -19,7 +19,9 @@ import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useProjectDetail } from '@/hooks/useProjects';
 import { useProjectRepositories } from '@/hooks/useGitHub';
+import { useVercelIntegrations } from '@/hooks/useVercel';
 import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
+import { LinkVercelModal } from '@/components/modals/LinkVercelModal';
 import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,9 +40,11 @@ export default function ProjectDetailScreen() {
   const projectId = id as string;
   const { project, loading, error, reload } = useProjectDetail(projectId);
   const { repositories, availableRepos, linkRepository, unlinkRepository } = useProjectRepositories(projectId);
+  const { integrations, availableProjects, linkVercelProject, unlinkVercelProject } = useVercelIntegrations(projectId);
 
   const [activeTab, setActiveTab] = useState<SubTab>('overview');
   const [showLinkModal, setShowLinkModal] = useState(false);
+  const [showVercelModal, setShowVercelModal] = useState(false);
 
   if (loading) {
     return (
@@ -65,6 +69,7 @@ export default function ProjectDetailScreen() {
   }
 
   const displayRepos = repositories.length > 0 ? repositories : (project.repositories || []);
+  const vercelIntegrations = integrations.filter((i) => i.provider === 'vercel');
 
   const getStatusBadge = (status: string) => {
     const variant: BadgeVariant =
@@ -196,7 +201,7 @@ export default function ProjectDetailScreen() {
                 { color: activeTab === 'integrations' ? colors.textPrimary : colors.textSecondary },
               ]}
             >
-              Integrations
+              Integrations ({vercelIntegrations.length + 1})
             </Text>
           </TouchableOpacity>
         </View>
@@ -217,6 +222,7 @@ export default function ProjectDetailScreen() {
                 </TouchableOpacity>
               ))}
             </View>
+
             {/* Health Diagnostic Card */}
             <HealthDiagnosticCard
               projectId={project.id}
@@ -325,24 +331,67 @@ export default function ProjectDetailScreen() {
 
         {activeTab === 'integrations' && (
           <View style={styles.tabContent}>
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="triangle-outline" size={20} color={colors.textPrimary} />
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  Vercel Deployment
-                </Text>
-              </View>
-              <Text style={[styles.reasonItem, { color: colors.textSecondary }]}>
-                Status: Not connected yet (Phase 7 Integration)
-              </Text>
-            </Card>
+            <Button
+              title="+ Link Vercel Project"
+              onPress={() => setShowVercelModal(true)}
+              variant="primary"
+              size="sm"
+              style={styles.linkRepoBtn}
+            />
 
+            {/* Vercel Integrations List */}
+            {vercelIntegrations.map((ver) => (
+              <Card key={ver.id} style={styles.sectionCard}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="triangle-outline" size={20} color={colors.textPrimary} />
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                    Vercel: {ver.name}
+                  </Text>
+                  <Badge
+                    label={ver.latest_deployment_status || 'READY'}
+                    variant={ver.latest_deployment_status === 'ERROR' ? 'critical' : 'healthy'}
+                    size="sm"
+                  />
+                </View>
+
+                {ver.production_url && (
+                  <Text style={[styles.reasonItem, { color: colors.textSecondary }]}>
+                    URL: {ver.production_url}
+                  </Text>
+                )}
+                {ver.latest_deployment_at && (
+                  <Text style={[styles.reasonItem, { color: colors.textMuted }]}>
+                    Latest Deploy: {new Date(ver.latest_deployment_at).toLocaleString()}
+                  </Text>
+                )}
+
+                <View style={[styles.repoActionRow, { marginTop: 12 }]}>
+                  {ver.production_url && (
+                    <Button
+                      title="Open Live Deployment"
+                      onPress={() => Linking.openURL(ver.production_url!)}
+                      variant="outline"
+                      size="sm"
+                    />
+                  )}
+                  <Button
+                    title="Unlink"
+                    onPress={() => unlinkVercelProject(ver.id)}
+                    variant="danger"
+                    size="sm"
+                  />
+                </View>
+              </Card>
+            ))}
+
+            {/* Supabase Integration Card */}
             <Card style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <Ionicons name="flash-outline" size={20} color={colors.statusHealthy} />
                 <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
                   Supabase Database
                 </Text>
+                <Badge label="CONNECTED" variant="healthy" size="sm" />
               </View>
               <Text style={[styles.reasonItem, { color: colors.textSecondary }]}>
                 Project Ref: ymunwzjmemxifjxsiugz
@@ -358,6 +407,14 @@ export default function ProjectDetailScreen() {
         availableRepos={availableRepos}
         onClose={() => setShowLinkModal(false)}
         onLink={linkRepository}
+      />
+
+      <LinkVercelModal
+        visible={showVercelModal}
+        projectId={projectId}
+        availableProjects={availableProjects}
+        onClose={() => setShowVercelModal(false)}
+        onLink={linkVercelProject}
       />
     </Container>
   );
@@ -455,6 +512,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semibold,
     fontFamily: Typography.fontFamily.sans,
+    flex: 1,
   },
   reasonItem: {
     fontSize: Typography.fontSize.xs,
