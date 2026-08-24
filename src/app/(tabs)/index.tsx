@@ -6,12 +6,34 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
-import { Spacing, Typography } from '@/constants/theme';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
+import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useProjects } from '@/hooks/useProjects';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function HomeScreen() {
   const { colors } = useTheme();
+  const { projects, stats, loading, error, reload } = useProjects();
+
+  const activeProjects = projects.filter((p) => p.status === 'active');
+  const needsAttentionProjects = projects.filter((p) => p.health_status !== 'healthy');
+
+  const getHealthBadge = (health: string) => {
+    switch (health) {
+      case 'healthy':
+        return <Badge label="Healthy" variant="healthy" dot size="sm" />;
+      case 'needs_attention':
+      case 'warning':
+        return <Badge label="Needs Attention" variant="warning" dot size="sm" />;
+      case 'critical':
+        return <Badge label="Critical" variant="critical" dot size="sm" />;
+      default:
+        return <Badge label="Healthy" variant="healthy" dot size="sm" />;
+    }
+  };
 
   return (
     <Container>
@@ -25,7 +47,7 @@ export default function HomeScreen() {
           action={
             <Button
               title="+ Add Project"
-              onPress={() => {}}
+              onPress={() => router.push('/project/add')}
               variant="primary"
               size="sm"
             />
@@ -35,114 +57,123 @@ export default function HomeScreen() {
         {/* Project Statistics Bar */}
         <View style={styles.statsGrid}>
           <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.textPrimary }]}>12</Text>
+            <Text style={[styles.statValue, { color: colors.textPrimary }]}>{stats.total}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Total</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.statusHealthy }]}>5</Text>
+            <Text style={[styles.statValue, { color: colors.statusHealthy }]}>{stats.active}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Active</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.statusWarning }]}>3</Text>
+            <Text style={[styles.statValue, { color: colors.statusWarning }]}>{stats.paused}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Paused</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.accent }]}>2</Text>
+            <Text style={[styles.statValue, { color: colors.accent }]}>{stats.completed}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Done</Text>
           </Card>
           <Card style={styles.statCard}>
-            <Text style={[styles.statValue, { color: colors.textMuted }]}>2</Text>
+            <Text style={[styles.statValue, { color: colors.textMuted }]}>{stats.ideas}</Text>
             <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Ideas</Text>
           </Card>
         </View>
 
-        {/* Today's Focus Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="flame-outline" size={18} color={colors.statusWarning} />
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Today&apos;s Focus
-            </Text>
+        {loading ? (
+          <View style={{ gap: 12, marginTop: 16 }}>
+            <Skeleton height={140} borderRadius={Radius.lg} />
+            <Skeleton height={140} borderRadius={Radius.lg} />
           </View>
-
-          <Card style={styles.projectCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.projectName, { color: colors.textPrimary }]}>
-                  AI Study Assistant
+        ) : error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <>
+            {/* Today's Focus Section */}
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="flame-outline" size={18} color={colors.statusWarning} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  Today&apos;s Focus
                 </Text>
-                <Badge label="Healthy" variant="healthy" dot size="sm" />
               </View>
-              <Text style={[styles.projectDesc, { color: colors.textSecondary }]}>
-                Personal study assistant with document RAG and quiz engine.
-              </Text>
+
+              {activeProjects.length === 0 ? (
+                <Card style={styles.emptyCard}>
+                  <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                    No active projects right now. Click &quot;+ Add Project&quot; to begin!
+                  </Text>
+                </Card>
+              ) : (
+                activeProjects.map((proj) => (
+                  <Card
+                    key={proj.id}
+                    style={styles.projectCard}
+                    onPress={() => router.push(`/project/${proj.id}`)}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={styles.titleRow}>
+                        <Text style={[styles.projectName, { color: colors.textPrimary }]}>
+                          {proj.name}
+                        </Text>
+                        {getHealthBadge(proj.health_status)}
+                      </View>
+                      <Text style={[styles.projectDesc, { color: colors.textSecondary }]}>
+                        {proj.description || 'No description.'}
+                      </Text>
+                    </View>
+
+                    <View style={styles.progressRow}>
+                      <Text style={[styles.progressText, { color: colors.textSecondary }]}>
+                        Progress: {proj.progress}%
+                      </Text>
+                      <ProgressBar progress={proj.progress} color={colors.statusHealthy} height={6} />
+                    </View>
+
+                    {proj.tags && proj.tags.length > 0 && (
+                      <View style={styles.techPills}>
+                        {proj.tags.map((tag) => (
+                          <Badge key={tag} label={tag} variant="neutral" size="sm" />
+                        ))}
+                      </View>
+                    )}
+                  </Card>
+                ))
+              )}
             </View>
 
-            <View style={styles.progressRow}>
-              <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-                Progress: 82%
-              </Text>
-              <ProgressBar progress={82} color={colors.statusHealthy} height={6} />
-            </View>
+            {/* Needs Attention Alert Section */}
+            {needsAttentionProjects.length > 0 && (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Ionicons name="warning-outline" size={18} color={colors.statusCritical} />
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                    Needs Attention
+                  </Text>
+                </View>
 
-            <View style={styles.techPills}>
-              <Badge label="React" variant="neutral" size="sm" />
-              <Badge label="FastAPI" variant="neutral" size="sm" />
-              <Badge label="Supabase" variant="neutral" size="sm" />
-            </View>
-          </Card>
-
-          <Card style={styles.projectCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.projectName, { color: colors.textPrimary }]}>
-                  Subject Manager
-                </Text>
-                <Badge label="Needs Attention" variant="warning" dot size="sm" />
+                {needsAttentionProjects.map((proj) => (
+                  <Card
+                    key={proj.id}
+                    variant="subtle"
+                    style={styles.alertCard}
+                    onPress={() => router.push(`/project/${proj.id}`)}
+                  >
+                    <View style={styles.alertHeader}>
+                      <Text style={[styles.alertProjectName, { color: colors.textPrimary }]}>
+                        {proj.name}
+                      </Text>
+                      {getHealthBadge(proj.health_status)}
+                    </View>
+                    {proj.health_reasons?.map((reason, idx) => (
+                      <Text key={idx} style={[styles.alertReason, { color: colors.statusCritical }]}>
+                        • {reason}
+                      </Text>
+                    ))}
+                  </Card>
+                ))}
               </View>
-              <Text style={[styles.projectDesc, { color: colors.textSecondary }]}>
-                Curriculum and course planning tool for university students.
-              </Text>
-            </View>
-
-            <View style={styles.progressRow}>
-              <Text style={[styles.progressText, { color: colors.textSecondary }]}>
-                Progress: 65%
-              </Text>
-              <ProgressBar progress={65} color={colors.statusWarning} height={6} />
-            </View>
-
-            <View style={styles.techPills}>
-              <Badge label="Expo" variant="neutral" size="sm" />
-              <Badge label="TypeScript" variant="neutral" size="sm" />
-            </View>
-          </Card>
-        </View>
-
-        {/* Needs Attention Alert Section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="warning-outline" size={18} color={colors.statusCritical} />
-            <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-              Needs Attention
-            </Text>
-          </View>
-
-          <Card variant="subtle" style={styles.alertCard}>
-            <View style={styles.alertHeader}>
-              <Text style={[styles.alertProjectName, { color: colors.textPrimary }]}>
-                Personal Portfolio
-              </Text>
-              <Badge label="Stale" variant="critical" size="sm" dot />
-            </View>
-            <Text style={[styles.alertReason, { color: colors.statusCritical }]}>
-              • No GitHub commits for 18 days
-            </Text>
-            <Text style={[styles.alertReason, { color: colors.statusCritical }]}>
-              • Production deployment in Vercel has warning
-            </Text>
-          </Card>
-        </View>
+            )}
+          </>
+        )}
       </ScrollView>
     </Container>
   );
@@ -218,6 +249,7 @@ const styles = StyleSheet.create({
   },
   techPills: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing[2],
   },
   alertCard: {
@@ -238,5 +270,13 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.xs,
     fontFamily: Typography.fontFamily.sans,
     marginTop: 2,
+  },
+  emptyCard: {
+    padding: Spacing[6],
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: Typography.fontSize.sm,
+    fontFamily: Typography.fontFamily.sans,
   },
 });
