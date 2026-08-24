@@ -7,110 +7,46 @@ import { Badge, BadgeVariant } from '@/components/ui/Badge';
 import { TextInput } from '@/components/ui/TextInput';
 import { ProgressBar } from '@/components/ui/ProgressBar';
 import { Button } from '@/components/ui/Button';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { ErrorState } from '@/components/ui/ErrorState';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { useProjects } from '@/hooks/useProjects';
+import { ProjectStatus } from '@/types/database';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 const FILTER_TABS = ['All', 'Active', 'Paused', 'Completed', 'Idea'] as const;
 type FilterTab = (typeof FILTER_TABS)[number];
-
-interface DemoProject {
-  id: string;
-  name: string;
-  description: string;
-  status: 'active' | 'paused' | 'completed' | 'idea';
-  health: 'healthy' | 'warning' | 'critical';
-  progress: number;
-  tags: string[];
-  reposCount: number;
-  lastActivity: string;
-}
-
-const MOCK_PROJECTS: DemoProject[] = [
-  {
-    id: '1',
-    name: 'AI Study Assistant',
-    description: 'Personal study assistant with document RAG and quiz engine.',
-    status: 'active',
-    health: 'healthy',
-    progress: 82,
-    tags: ['React', 'FastAPI', 'Supabase', 'OpenAI'],
-    reposCount: 3,
-    lastActivity: '2 hours ago',
-  },
-  {
-    id: '2',
-    name: 'Subject Manager',
-    description: 'Curriculum and course planning tool for university students.',
-    status: 'active',
-    health: 'warning',
-    progress: 65,
-    tags: ['Expo', 'React Native', 'TypeScript'],
-    reposCount: 1,
-    lastActivity: '18 days ago',
-  },
-  {
-    id: '3',
-    name: 'App Wallet',
-    description: 'Personal Developer Command Center for projects, repos & deployments.',
-    status: 'active',
-    health: 'healthy',
-    progress: 30,
-    tags: ['Expo Router', 'Supabase', 'PostgreSQL'],
-    reposCount: 1,
-    lastActivity: 'Just now',
-  },
-  {
-    id: '4',
-    name: 'Personal Portfolio',
-    description: 'Developer portfolio built with Next.js and TailwindCSS.',
-    status: 'paused',
-    health: 'critical',
-    progress: 90,
-    tags: ['Next.js', 'Vercel', 'TailwindCSS'],
-    reposCount: 1,
-    lastActivity: '1 month ago',
-  },
-  {
-    id: '5',
-    name: 'DevOps Automation CLI',
-    description: 'CLI tool to auto-provision staging environments.',
-    status: 'idea',
-    health: 'healthy',
-    progress: 0,
-    tags: ['Go', 'Docker', 'GitHub Actions'],
-    reposCount: 0,
-    lastActivity: '3 months ago',
-  },
-];
 
 export default function ProjectsScreen() {
   const { colors } = useTheme();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTab, setSelectedTab] = useState<FilterTab>('All');
 
-  const filteredProjects = MOCK_PROJECTS.filter((proj) => {
-    const matchesSearch =
-      proj.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      proj.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      proj.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+  const statusFilter: ProjectStatus | 'all' =
+    selectedTab === 'All' ? 'all' : (selectedTab.toLowerCase() as ProjectStatus);
 
-    if (selectedTab === 'All') return matchesSearch;
-    return matchesSearch && proj.status.toLowerCase() === selectedTab.toLowerCase();
+  const { projects, loading, error, reload } = useProjects({
+    searchQuery,
+    status: statusFilter,
   });
 
-  const getHealthBadge = (health: DemoProject['health']) => {
+  const getHealthBadge = (health: string) => {
     switch (health) {
       case 'healthy':
         return <Badge label="Healthy" variant="healthy" dot size="sm" />;
+      case 'needs_attention':
       case 'warning':
         return <Badge label="Needs Attention" variant="warning" dot size="sm" />;
       case 'critical':
         return <Badge label="Critical" variant="critical" dot size="sm" />;
+      default:
+        return <Badge label="Healthy" variant="healthy" dot size="sm" />;
     }
   };
 
-  const getStatusBadge = (status: DemoProject['status']) => {
+  const getStatusBadge = (status: string) => {
     const variant: BadgeVariant =
       status === 'active'
         ? 'brand'
@@ -130,11 +66,11 @@ export default function ProjectsScreen() {
       >
         <Header
           title="Projects"
-          subtitle={`${filteredProjects.length} projects in your ecosystem`}
+          subtitle={`${projects.length} projects in your ecosystem`}
           action={
             <Button
               title="+ New"
-              onPress={() => {}}
+              onPress={() => router.push('/project/add')}
               variant="primary"
               size="sm"
             />
@@ -196,68 +132,84 @@ export default function ProjectsScreen() {
         </View>
 
         {/* Projects List */}
-        <View style={styles.projectsList}>
-          {filteredProjects.length === 0 ? (
-            <Card style={styles.emptyCard}>
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                No projects match your filter criteria.
-              </Text>
-            </Card>
-          ) : (
-            filteredProjects.map((proj) => (
-              <Card key={proj.id} style={styles.projectCard}>
-                <View style={styles.cardHeader}>
-                  <View style={styles.headerTop}>
-                    <View style={styles.badgesRow}>
-                      {getStatusBadge(proj.status)}
-                      {getHealthBadge(proj.health)}
-                    </View>
-                    <Text style={[styles.timeText, { color: colors.textMuted }]}>
-                      {proj.lastActivity}
-                    </Text>
-                  </View>
-                  <Text style={[styles.projectName, { color: colors.textPrimary }]}>
-                    {proj.name}
-                  </Text>
-                  <Text
-                    style={[styles.projectDesc, { color: colors.textSecondary }]}
-                    numberOfLines={2}
-                  >
-                    {proj.description}
-                  </Text>
-                </View>
-
-                {/* Progress */}
-                <View style={styles.progressSection}>
-                  <View style={styles.progressLabelRow}>
-                    <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-                      Progress
-                    </Text>
-                    <Text style={[styles.metaText, { color: colors.textPrimary }]}>
-                      {proj.progress}%
-                    </Text>
-                  </View>
-                  <ProgressBar progress={proj.progress} height={5} />
-                </View>
-
-                {/* Footer Tech Tags */}
-                <View style={styles.cardFooter}>
-                  <View style={styles.tagsRow}>
-                    {proj.tags.map((tag) => (
-                      <Badge key={tag} label={tag} variant="neutral" size="sm" />
-                    ))}
-                  </View>
-                  <View style={styles.repoCountRow}>
-                    <Ionicons name="git-branch-outline" size={14} color={colors.textMuted} />
-                    <Text style={[styles.repoCountText, { color: colors.textMuted }]}>
-                      {proj.reposCount} {proj.reposCount === 1 ? 'repo' : 'repos'}
-                    </Text>
-                  </View>
-                </View>
+        {loading ? (
+          <View style={{ gap: 12 }}>
+            <Skeleton height={140} borderRadius={Radius.lg} />
+            <Skeleton height={140} borderRadius={Radius.lg} />
+          </View>
+        ) : error ? (
+          <ErrorState message={error} onRetry={reload} />
+        ) : (
+          <View style={styles.projectsList}>
+            {projects.length === 0 ? (
+              <Card style={styles.emptyCard}>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                  No projects match your filter criteria.
+                </Text>
               </Card>
-            ))
-          )}
-        </View>
+            ) : (
+              projects.map((proj) => {
+                const reposCount = proj.repositories?.length || 0;
+                return (
+                  <Card
+                    key={proj.id}
+                    style={styles.projectCard}
+                    onPress={() => router.push(`/project/${proj.id}`)}
+                  >
+                    <View style={styles.cardHeader}>
+                      <View style={styles.headerTop}>
+                        <View style={styles.badgesRow}>
+                          {getStatusBadge(proj.status)}
+                          {getHealthBadge(proj.health_status)}
+                        </View>
+                        <Text style={[styles.timeText, { color: colors.textMuted }]}>
+                          {new Date(proj.last_activity_at).toLocaleDateString()}
+                        </Text>
+                      </View>
+                      <Text style={[styles.projectName, { color: colors.textPrimary }]}>
+                        {proj.name}
+                      </Text>
+                      <Text
+                        style={[styles.projectDesc, { color: colors.textSecondary }]}
+                        numberOfLines={2}
+                      >
+                        {proj.description || 'No description provided.'}
+                      </Text>
+                    </View>
+
+                    {/* Progress */}
+                    <View style={styles.progressSection}>
+                      <View style={styles.progressLabelRow}>
+                        <Text style={[styles.metaText, { color: colors.textSecondary }]}>
+                          Progress
+                        </Text>
+                        <Text style={[styles.metaText, { color: colors.textPrimary }]}>
+                          {proj.progress}%
+                        </Text>
+                      </View>
+                      <ProgressBar progress={proj.progress} height={5} />
+                    </View>
+
+                    {/* Footer Tech Tags */}
+                    <View style={styles.cardFooter}>
+                      <View style={styles.tagsRow}>
+                        {proj.tags.map((tag) => (
+                          <Badge key={tag} label={tag} variant="neutral" size="sm" />
+                        ))}
+                      </View>
+                      <View style={styles.repoCountRow}>
+                        <Ionicons name="git-branch-outline" size={14} color={colors.textMuted} />
+                        <Text style={[styles.repoCountText, { color: colors.textMuted }]}>
+                          {reposCount} {reposCount === 1 ? 'repo' : 'repos'}
+                        </Text>
+                      </View>
+                    </View>
+                  </Card>
+                );
+              })
+            )}
+          </View>
+        )}
       </ScrollView>
     </Container>
   );
