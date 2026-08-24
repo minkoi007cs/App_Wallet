@@ -23,6 +23,12 @@ import { Ionicons } from '@expo/vector-icons';
 
 type SubTab = 'overview' | 'repositories' | 'integrations';
 
+const QUICK_ACTIONS = [
+  { label: 'Tasks', icon: 'checkmark-circle-outline' as const, route: (id: string) => `/project/tasks/${id}`, color: '#6366F1' },
+  { label: 'Milestones', icon: 'flag-outline' as const, route: (id: string) => `/project/milestones/${id}`, color: '#F59E0B' },
+  { label: 'Journal', icon: 'journal-outline' as const, route: (id: string) => `/project/journal/${id}`, color: '#10B981' },
+] as const;
+
 export default function ProjectDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -189,6 +195,19 @@ export default function ProjectDetailScreen() {
         {/* Tab Content */}
         {activeTab === 'overview' && (
           <View style={styles.tabContent}>
+            {/* Quick Actions — Tasks / Milestones / Journal */}
+            <View style={styles.quickActionsRow}>
+              {QUICK_ACTIONS.map((action) => (
+                <TouchableOpacity
+                  key={action.label}
+                  style={[styles.quickActionCard, { backgroundColor: action.color + '18', borderColor: action.color + '40' }]}
+                  onPress={() => router.push(action.route(project.id) as any)}
+                >
+                  <Ionicons name={action.icon} size={22} color={action.color} />
+                  <Text style={[styles.quickActionLabel, { color: action.color }]}>{action.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
             {/* Health Reasons Card */}
             <Card style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
@@ -384,6 +403,25 @@ const styles = StyleSheet.create({
   },
   tabContent: {
     gap: Spacing[3],
+  },
+  quickActionsRow: {
+    flexDirection: 'row',
+    gap: Spacing[3],
+    marginBottom: Spacing[1],
+  },
+  quickActionCard: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing[4],
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    gap: Spacing[2],
+  },
+  quickActionLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    fontFamily: Typography.fontFamily.sans,
   },
   sectionCard: {
     padding: Spacing[4],
