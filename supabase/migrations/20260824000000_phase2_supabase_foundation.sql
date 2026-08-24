@@ -316,16 +316,16 @@ CREATE POLICY "Users can manage project repositories"
 ON public.project_repositories FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = project_repositories.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = project_repositories.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = project_repositories.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = project_repositories.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -336,16 +336,16 @@ CREATE POLICY "Users can manage project integrations"
 ON public.project_integrations FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = project_integrations.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = project_integrations.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = project_integrations.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = project_integrations.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -356,16 +356,16 @@ CREATE POLICY "Users can manage project tasks"
 ON public.tasks FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = tasks.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = tasks.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = tasks.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = tasks.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -376,18 +376,18 @@ CREATE POLICY "Users can manage task subtasks"
 ON public.task_subtasks FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.tasks
-        JOIN public.projects ON projects.id = tasks.project_id
-        WHERE tasks.id = task_subtasks.task_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.tasks t
+        JOIN public.projects p ON p.id = t.project_id
+        WHERE t.id = task_subtasks.task_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.tasks
-        JOIN public.projects ON projects.id = tasks.project_id
-        WHERE tasks.id = task_subtasks.task_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.tasks t
+        JOIN public.projects p ON p.id = t.project_id
+        WHERE t.id = task_subtasks.task_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -398,16 +398,16 @@ CREATE POLICY "Users can manage project milestones"
 ON public.milestones FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = milestones.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = milestones.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = milestones.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = milestones.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -418,16 +418,16 @@ CREATE POLICY "Users can manage journal entries"
 ON public.journal_entries FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = journal_entries.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = journal_entries.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = journal_entries.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = journal_entries.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
@@ -438,16 +438,16 @@ CREATE POLICY "Users can manage activity events"
 ON public.activity_events FOR ALL
 USING (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = activity_events.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = activity_events.project_id
+        AND p.user_id = auth.uid()
     )
 )
 WITH CHECK (
     EXISTS (
-        SELECT 1 FROM public.projects
-        WHERE projects.id = activity_events.project_id
-        AND projects.user_id = auth.uid()
+        SELECT 1 FROM public.projects p
+        WHERE p.id = activity_events.project_id
+        AND p.user_id = auth.uid()
     )
 );
 
