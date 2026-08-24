@@ -2,6 +2,7 @@ import { HealthState } from '@/types/database';
 import { ProjectWithDetails, fetchProjectById, updateProject } from '@/services/projects';
 import { fetchTasksByProject } from '@/services/tasks';
 import { fetchProjectRepositories } from '@/services/github';
+import { fetchProjectIntegrations } from '@/services/vercel';
 
 export interface HealthDiagnosticResult {
   health_status: HealthState;
@@ -11,7 +12,8 @@ export interface HealthDiagnosticResult {
 export function computeProjectHealth(
   project: ProjectWithDetails,
   tasks: any[] = [],
-  repositories: any[] = []
+  repositories: any[] = [],
+  integrations: any[] = []
 ): HealthDiagnosticResult {
   const reasons: string[] = [];
   let isCritical = false;
@@ -63,6 +65,15 @@ export function computeProjectHealth(
     }
   }
 
+  // Rule 5: Vercel deployment failure check
+  const failedDeploys = integrations.filter(
+    (i) => i.provider === 'vercel' && (i.latest_deployment_status === 'ERROR' || i.latest_deployment_status === 'FAILED')
+  );
+  if (failedDeploys.length > 0) {
+    reasons.push(`Latest Vercel deployment failed on ${failedDeploys[0].name}`);
+    isCritical = true;
+  }
+
   // Calculate final health state
   let finalStatus: HealthState = 'healthy';
   if (isCritical) {
@@ -89,8 +100,9 @@ export async function evaluateAndSaveProjectHealth(projectId: string): Promise<H
 
   const tasks = await fetchTasksByProject(projectId);
   const repositories = await fetchProjectRepositories(projectId);
+  const integrations = await fetchProjectIntegrations(projectId);
 
-  const result = computeProjectHealth(project, tasks, repositories);
+  const result = computeProjectHealth(project, tasks, repositories, integrations);
 
   // Update in database / local store
   await updateProject(projectId, {
