@@ -20,6 +20,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useProjectDetail } from '@/hooks/useProjects';
 import { useProjectRepositories } from '@/hooks/useGitHub';
 import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
+import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -216,26 +217,13 @@ export default function ProjectDetailScreen() {
                 </TouchableOpacity>
               ))}
             </View>
-            {/* Health Reasons Card */}
-            <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="pulse-outline" size={18} color={colors.brand} />
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  Project Health Diagnostics
-                </Text>
-              </View>
-              {project.health_reasons && project.health_reasons.length > 0 ? (
-                project.health_reasons.map((reason, index) => (
-                  <Text key={index} style={[styles.reasonItem, { color: colors.textSecondary }]}>
-                    • {reason}
-                  </Text>
-                ))
-              ) : (
-                <Text style={[styles.reasonItem, { color: colors.statusHealthy }]}>
-                  ✓ Project health status is verified optimal.
-                </Text>
-              )}
-            </Card>
+            {/* Health Diagnostic Card */}
+            <HealthDiagnosticCard
+              projectId={project.id}
+              initialHealthStatus={project.health_status}
+              initialHealthReasons={project.health_reasons || []}
+              onRefreshFinished={reload}
+            />
 
             {/* Timeline & Metadata Card */}
             <Card style={styles.sectionCard}>
