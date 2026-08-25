@@ -11,6 +11,7 @@ import { useGitHubAccount } from '@/hooks/useGitHub';
 import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/services/auth';
 import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
+import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
@@ -51,13 +52,20 @@ export default function SettingsScreen() {
             </View>
           </View>
 
-          <Button
-            title="Sign Out"
-            onPress={() => signOut()}
-            variant="outline"
-            size="sm"
-            style={styles.actionBtn}
-          />
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <Button
+              title="Account & Security"
+              onPress={() => router.push('/profile')}
+              variant="primary"
+              size="sm"
+            />
+            <Button
+              title="Sign Out"
+              onPress={() => signOut()}
+              variant="outline"
+              size="sm"
+            />
+          </View>
         </Card>
 
         {/* Notification Preferences Section */}

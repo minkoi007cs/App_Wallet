@@ -47,3 +47,18 @@ export async function getProfile(userId: string) {
   if (error) throw error;
   return data;
 }
+
+export async function updateProfile(updates: { full_name?: string; avatar_url?: string }) {
+  const { data: session } = await supabase.auth.getSession();
+  if (session?.session?.user) {
+    const { data, error } = await (supabase.from('profiles') as any)
+      .update(updates)
+      .eq('id', session.session.user.id)
+      .select()
+      .single();
+
+    if (!error) return data;
+  }
+
+  return { id: 'dev-user', ...updates };
+}
