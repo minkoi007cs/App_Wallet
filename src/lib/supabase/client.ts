@@ -2,35 +2,46 @@ import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Database } from '@/types/database';
-import { Platform } from 'react-native';
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://ymunwzjmemxifjxsiugz.supabase.co';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
-// SSR-safe storage adapter for static web rendering
+// Storage adapter for native, web, and node test environments
 const memoryStorage: Record<string, string> = {};
 
 const customStorage = {
-  getItem: (key: string) => {
-    if (Platform.OS === 'web' && typeof window === 'undefined') {
-      return Promise.resolve(memoryStorage[key] || null);
+  getItem: async (key: string) => {
+    try {
+      if (typeof window === 'undefined' || !AsyncStorage) {
+        return memoryStorage[key] || null;
+      }
+      return await AsyncStorage.getItem(key);
+    } catch {
+      return memoryStorage[key] || null;
     }
-    return AsyncStorage.getItem(key);
   },
-  setItem: (key: string, value: string) => {
-    if (Platform.OS === 'web' && typeof window === 'undefined') {
+  setItem: async (key: string, value: string) => {
+    try {
+      if (typeof window === 'undefined' || !AsyncStorage) {
+        memoryStorage[key] = value;
+        return;
+      }
+      await AsyncStorage.setItem(key, value);
+    } catch {
       memoryStorage[key] = value;
-      return Promise.resolve();
     }
-    return AsyncStorage.setItem(key, value);
   },
-  removeItem: (key: string) => {
-    if (Platform.OS === 'web' && typeof window === 'undefined') {
+  removeItem: async (key: string) => {
+    try {
+      if (typeof window === 'undefined' || !AsyncStorage) {
+        delete memoryStorage[key];
+        return;
+      }
+      await AsyncStorage.removeItem(key);
+    } catch {
       delete memoryStorage[key];
-      return Promise.resolve();
     }
-    return AsyncStorage.removeItem(key);
   },
 };
 

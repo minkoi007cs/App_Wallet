@@ -5,6 +5,8 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { Container } from '@/components/ui/Container';
 import { Card } from '@/components/ui/Card';
@@ -51,88 +53,106 @@ export default function LoginScreen() {
 
   return (
     <Container padded>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
       >
-        <View style={styles.headerArea}>
-          <View
-            style={[
-              styles.logoCircle,
-              { backgroundColor: colors.brand + '20', borderColor: colors.brand },
-            ]}
-          >
-            <Ionicons name="wallet-outline" size={36} color={colors.brand} />
-          </View>
-          <Text style={[styles.appName, { color: colors.textPrimary }]}>
-            App Wallet
-          </Text>
-          <Text style={[styles.appTagline, { color: colors.textSecondary }]}>
-            Personal Developer Command Center
-          </Text>
-        </View>
-
-        <Card style={styles.formCard}>
-          <Text style={[styles.formTitle, { color: colors.textPrimary }]}>
-            {isSignUp ? 'Create Your Account' : 'Welcome Back'}
-          </Text>
-
-          {errorMessage && (
-            <ErrorState
-              message={errorMessage}
-              style={styles.errorAlert}
-            />
-          )}
-
-          {isSignUp && (
-            <TextInput
-              label="Full Name"
-              placeholder="e.g. Khoi Hoang"
-              value={fullName}
-              onChangeText={setFullName}
-              leftIcon={<Ionicons name="person-outline" size={18} color={colors.textMuted} />}
-            />
-          )}
-
-          <TextInput
-            label="Email Address"
-            placeholder="dev@appwallet.internal"
-            value={email}
-            onChangeText={setEmail}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            leftIcon={<Ionicons name="mail-outline" size={18} color={colors.textMuted} />}
-          />
-
-          <TextInput
-            label="Password"
-            placeholder="••••••••••••"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            leftIcon={<Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />}
-          />
-
-          <Button
-            title={loading ? 'Authenticating...' : isSignUp ? 'Create Account' : 'Sign In'}
-            onPress={handleSubmit}
-            loading={loading}
-            variant="primary"
-            style={styles.submitBtn}
-          />
-
-          <TouchableOpacity
-            onPress={() => setIsSignUp(!isSignUp)}
-            style={styles.toggleRow}
-          >
-            <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
-              {isSignUp
-                ? 'Already have an account? Sign in'
-                : "Don't have an account? Sign up"}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.headerArea}>
+            <View
+              style={[
+                styles.logoCircle,
+                { backgroundColor: colors.brand + '20', borderColor: colors.brand },
+              ]}
+            >
+              <Ionicons name="wallet-outline" size={36} color={colors.brand} />
+            </View>
+            <Text style={[styles.appName, { color: colors.textPrimary }]}>
+              App Wallet
             </Text>
-          </TouchableOpacity>
-        </Card>
-      </ScrollView>
+            <Text style={[styles.appTagline, { color: colors.textSecondary }]}>
+              Personal Developer Command Center
+            </Text>
+          </View>
+
+          <Card style={styles.formCard}>
+            <Text style={[styles.formTitle, { color: colors.textPrimary }]}>
+              {isSignUp ? 'Create Your Account' : 'Welcome Back'}
+            </Text>
+
+            {errorMessage && (
+              <ErrorState
+                message={errorMessage}
+                style={styles.errorAlert}
+              />
+            )}
+
+            {isSignUp && (
+              <TextInput
+                label="Full Name"
+                placeholder="John Doe"
+                value={fullName}
+                onChangeText={setFullName}
+                autoCapitalize="words"
+                leftIcon={<Ionicons name="person-outline" size={18} color={colors.textMuted} />}
+              />
+            )}
+
+            <TextInput
+              label="Email Address"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              leftIcon={<Ionicons name="mail-outline" size={18} color={colors.textMuted} />}
+            />
+
+            <TextInput
+              label="Password"
+              placeholder="••••••••"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              leftIcon={<Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} />}
+            />
+
+            <Button
+              title={
+                loading
+                  ? isSignUp
+                    ? 'Creating Account...'
+                    : 'Signing In...'
+                  : isSignUp
+                  ? 'Sign Up'
+                  : 'Sign In'
+              }
+              onPress={handleSubmit}
+              loading={loading}
+              variant="primary"
+              size="lg"
+              style={styles.submitBtn}
+            />
+
+            <TouchableOpacity
+              onPress={() => {
+                setIsSignUp((prev) => !prev);
+                setErrorMessage(null);
+              }}
+              style={styles.toggleRow}
+            >
+              <Text style={[styles.toggleText, { color: colors.textSecondary }]}>
+                {isSignUp
+                  ? 'Already have an account? Sign in'
+                  : "Don't have an account? Sign up"}
+              </Text>
+            </TouchableOpacity>
+          </Card>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </Container>
   );
 }

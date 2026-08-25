@@ -1,7 +1,5 @@
-import { fetchProjects, fetchProjectById } from '@/services/projects';
-import { fetchTasksByProject } from '@/services/tasks';
-import { fetchProjectRepositories } from '@/services/github';
-import { fetchProjectIntegrations } from '@/services/vercel';
+import type { ProjectWithDetails } from './projects';
+import type { TaskWithSubtasks } from './tasks';
 
 export interface SmartRecommendationItem {
   id: string;
@@ -20,6 +18,9 @@ export interface AIAgentPromptOptions {
 }
 
 export async function getSmartRecommendations(): Promise<SmartRecommendationItem[]> {
+  const { fetchProjects } = await import('./projects');
+  const { fetchTasksByProject } = await import('./tasks');
+
   const projects = await fetchProjects();
   const recommendations: SmartRecommendationItem[] = [];
 
@@ -118,15 +119,35 @@ export async function getSmartRecommendations(): Promise<SmartRecommendationItem
 }
 
 export async function generateAIAgentPrompt(
-  projectId: string,
-  options?: AIAgentPromptOptions
+  projectOrId: string | ProjectWithDetails,
+  tasksOrOptions?: TaskWithSubtasks[] | AIAgentPromptOptions,
+  maybeOptions?: AIAgentPromptOptions
 ): Promise<string> {
-  const project = await fetchProjectById(projectId);
-  if (!project) throw new Error(`Project ${projectId} not found.`);
+  let project: ProjectWithDetails | null = null;
+  let tasks: TaskWithSubtasks[] = [];
+  let repos: any[] = [];
+  let integrations: any[] = [];
+  let options: AIAgentPromptOptions | undefined;
 
-  const tasks = await fetchTasksByProject(projectId);
-  const repos = await fetchProjectRepositories(projectId);
-  const integrations = await fetchProjectIntegrations(projectId);
+  if (typeof projectOrId === 'string') {
+    const { fetchProjectById } = await import('./projects');
+    const { fetchTasksByProject } = await import('./tasks');
+    const { fetchProjectRepositories } = await import('./github');
+    const { fetchProjectIntegrations } = await import('./vercel');
+
+    project = await fetchProjectById(projectOrId);
+    if (!project) throw new Error(`Project ${projectOrId} not found.`);
+    tasks = await fetchTasksByProject(projectOrId).catch(() => []);
+    repos = await fetchProjectRepositories(projectOrId).catch(() => []);
+    integrations = await fetchProjectIntegrations(projectOrId).catch(() => []);
+    options = tasksOrOptions as AIAgentPromptOptions;
+  } else {
+    project = projectOrId;
+    tasks = Array.isArray(tasksOrOptions) ? tasksOrOptions : [];
+    repos = project.repositories || [];
+    integrations = project.integrations || [];
+    options = maybeOptions || (Array.isArray(tasksOrOptions) ? undefined : (tasksOrOptions as AIAgentPromptOptions));
+  }
 
   const pendingTasks = tasks.filter((t) => t.status !== 'done');
   const primaryRepo = repos[0];
