@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const { isConnected, refresh } = useGitHubAccount();
 
   const initialConfig = getGitHubConfig();
-  const [username, setUsername] = useState(initialConfig.username);
+  const [username, setUsername] = useState(initialConfig.username || 'minkoi007cs');
   const [patToken, setPatToken] = useState(initialConfig.token || '');
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -30,7 +30,7 @@ export default function SettingsScreen() {
   const handleSaveSync = async () => {
     setSyncing(true);
     try {
-      configureGitHubCredentials({
+      await configureGitHubCredentials({
         username: username.trim(),
         token: patToken.trim() || undefined,
       });
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
   const handleAutoImport = async () => {
     setImporting(true);
     try {
-      configureGitHubCredentials({
+      await configureGitHubCredentials({
         username: username.trim(),
         token: patToken.trim() || undefined,
       });

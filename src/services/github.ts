@@ -32,17 +32,43 @@ export interface LinkRepoInput {
   open_issues_count?: number;
 }
 
-// ──────────────── GITHUB CREDENTIALS (in-memory, will move to OAuth) ────────────────
+// ──────────────── GITHUB CREDENTIALS (persisted in AsyncStorage & external_accounts) ────────────────
+
+const GITHUB_STORAGE_KEY = 'app_wallet_github_config';
 
 let activeGitHubToken: string | null = null;
 let activeGitHubUsername: string = '';
 
-export function configureGitHubCredentials(config: { token?: string; username?: string }) {
+export async function configureGitHubCredentials(config: { token?: string; username?: string }) {
   if (config.token !== undefined) activeGitHubToken = config.token.trim() || null;
-  if (config.username) activeGitHubUsername = config.username.trim();
+  if (config.username !== undefined) activeGitHubUsername = config.username.trim();
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(
+        GITHUB_STORAGE_KEY,
+        JSON.stringify({ token: activeGitHubToken, username: activeGitHubUsername })
+      );
+    } catch {
+      // Non-critical local storage fallback
+    }
+  }
 }
 
 export function getGitHubConfig() {
+  if (!activeGitHubUsername && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = window.localStorage.getItem(GITHUB_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.token) activeGitHubToken = parsed.token;
+        if (parsed.username) activeGitHubUsername = parsed.username;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   return {
     token: activeGitHubToken,
     username: activeGitHubUsername,
@@ -56,32 +82,50 @@ async function requireAuth(): Promise<void> {
   if (!session?.session?.user) throw new Error('Not authenticated. Please sign in.');
 }
 
-// ──────────────── CONNECTION STATUS (real check, not hardcoded) ────────────────
+// ──────────────── CONNECTION STATUS (real check with token or public user) ────────────────
 
 export async function getGitHubConnectionStatus(): Promise<{
   isConnected: boolean;
   accountName?: string;
 }> {
-  // Check if we have a token and it works
-  if (!activeGitHubToken) {
-    return { isConnected: false };
+  const config = getGitHubConfig();
+  const token = config.token;
+  const username = config.username;
+
+  if (token) {
+    try {
+      const res = await fetch('https://api.github.com/user', {
+        headers: {
+          Authorization: `token ${token}`,
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'App-Wallet-Client',
+        },
+      });
+      if (res.ok) {
+        const user = await res.json();
+        activeGitHubUsername = user.login;
+        return { isConnected: true, accountName: user.login };
+      }
+    } catch {
+      // Token invalid
+    }
   }
 
-  try {
-    const res = await fetch('https://api.github.com/user', {
-      headers: {
-        Authorization: `token ${activeGitHubToken}`,
-        Accept: 'application/vnd.github.v3+json',
-        'User-Agent': 'App-Wallet-Client',
-      },
-    });
-    if (res.ok) {
-      const user = await res.json();
-      activeGitHubUsername = user.login;
-      return { isConnected: true, accountName: user.login };
+  if (username) {
+    try {
+      const res = await fetch(`https://api.github.com/users/${encodeURIComponent(username)}`, {
+        headers: {
+          Accept: 'application/vnd.github.v3+json',
+          'User-Agent': 'App-Wallet-Client',
+        },
+      });
+      if (res.ok) {
+        const user = await res.json();
+        return { isConnected: true, accountName: user.login };
+      }
+    } catch {
+      // Network error
     }
-  } catch {
-    // Token invalid or network error
   }
 
   return { isConnected: false };
@@ -90,8 +134,12 @@ export async function getGitHubConnectionStatus(): Promise<{
 // ──────────────── FETCH REAL GITHUB REPOSITORIES VIA REST API ────────────────
 
 export async function fetchUserGitHubRepositories(): Promise<GitHubRepoItem[]> {
-  if (!activeGitHubToken && !activeGitHubUsername) {
-    throw new Error('GitHub not connected. Please enter your GitHub username or connect via OAuth.');
+  const config = getGitHubConfig();
+  const token = config.token;
+  const username = config.username;
+
+  if (!token && !username) {
+    throw new Error('GitHub not connected. Please go to Settings to enter your GitHub username or Personal Access Token.');
   }
 
   const headers: Record<string, string> = {
@@ -99,13 +147,13 @@ export async function fetchUserGitHubRepositories(): Promise<GitHubRepoItem[]> {
     'User-Agent': 'App-Wallet-Client',
   };
 
-  if (activeGitHubToken) {
-    headers.Authorization = `token ${activeGitHubToken}`;
+  if (token) {
+    headers.Authorization = `token ${token}`;
   }
 
-  const apiUrl = activeGitHubToken
+  const apiUrl = token
     ? 'https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member&sort=updated'
-    : `https://api.github.com/users/${encodeURIComponent(activeGitHubUsername)}/repos?per_page=100&sort=updated`;
+    : `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`;
 
   const res = await fetch(apiUrl, { headers });
 
@@ -144,8 +192,9 @@ export async function fetchRealCommitInfo(owner: string, repo: string): Promise<
       Accept: 'application/vnd.github.v3+json',
       'User-Agent': 'App-Wallet-Client',
     };
-    if (activeGitHubToken) {
-      headers.Authorization = `token ${activeGitHubToken}`;
+    const config = getGitHubConfig();
+    if (config.token) {
+      headers.Authorization = `token ${config.token}`;
     }
 
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`, { headers });
