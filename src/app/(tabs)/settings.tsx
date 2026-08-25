@@ -58,7 +58,18 @@ export default function SettingsScreen() {
   };
 
   const handleConnectGitHubOAuth = () => {
-    const clientId = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID || 'demo_client_id';
+    const clientId = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID;
+    if (!clientId || clientId === 'demo_client_id') {
+      Alert.alert(
+        'GitHub Sync Guide',
+        'Direct username & PAT sync is active! To create a Personal Access Token for private repos, open GitHub token settings.',
+        [
+          { text: 'OK' },
+          { text: 'Create Token on GitHub', onPress: () => Linking.openURL('https://github.com/settings/tokens/new?description=AppWallet&scopes=repo,user') },
+        ]
+      );
+      return;
+    }
     const redirectUri = encodeURIComponent('https://ymunwzjmemxifjxsiugz.supabase.co/functions/v1/github-oauth');
     const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo,user`;
     Linking.openURL(githubAuthUrl);
