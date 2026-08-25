@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useTasks } from '@/hooks/useTasks';
@@ -303,6 +304,7 @@ export default function ProjectTasksScreen() {
   const { tasks, loading, error, load, createTask, updateTaskStatus, deleteTask, toggleSubtask } = useTasks(projectId);
   const [showAddModal, setShowAddModal] = useState(false);
   const [activeColumn, setActiveColumn] = useState<TaskStatus | 'all'>('all');
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -311,6 +313,15 @@ export default function ProjectTasksScreen() {
   }, [load]);
 
   const filteredTasks = activeColumn === 'all' ? tasks : tasks.filter((t) => t.status === activeColumn);
+
+  const handleConfirmDelete = async () => {
+    if (!deletingTaskId) return;
+    try {
+      await deleteTask(deletingTaskId);
+    } finally {
+      setDeletingTaskId(null);
+    }
+  };
 
   return (
     <Container>
@@ -375,7 +386,7 @@ export default function ProjectTasksScreen() {
                 key={task.id}
                 task={task}
                 onStatusChange={updateTaskStatus}
-                onDelete={deleteTask}
+                onDelete={(taskId) => setDeletingTaskId(taskId)}
                 onToggleSubtask={toggleSubtask}
               />
             ))}
@@ -394,6 +405,15 @@ export default function ProjectTasksScreen() {
         projectId={projectId}
         onClose={() => setShowAddModal(false)}
         onSave={createTask}
+      />
+
+      <ConfirmDialog
+        visible={!!deletingTaskId}
+        title="Delete Task"
+        message="Are you sure you want to delete this task? All subtasks will also be removed."
+        confirmLabel="Delete Task"
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeletingTaskId(null)}
       />
     </Container>
   );

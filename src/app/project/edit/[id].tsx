@@ -13,6 +13,7 @@ import { TextInput } from '@/components/ui/TextInput';
 import { Button } from '@/components/ui/Button';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useProjectDetail } from '@/hooks/useProjects';
@@ -53,6 +54,7 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
 
@@ -244,6 +246,7 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
         placeholder="https://my-app.vercel.app"
         value={frontendUrl}
         onChangeText={setFrontendUrl}
+        error={formErrors.frontend_url}
         leftIcon={<Ionicons name="globe-outline" size={18} color={colors.textMuted} />}
       />
 
@@ -252,6 +255,7 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
         placeholder="https://api.my-app.com"
         value={backendUrl}
         onChangeText={setBackendUrl}
+        error={formErrors.backend_url}
         leftIcon={<Ionicons name="server-outline" size={18} color={colors.textMuted} />}
       />
 
@@ -260,6 +264,7 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
         placeholder="https://supabase.com/dashboard/project/..."
         value={supabaseUrl}
         onChangeText={setSupabaseUrl}
+        error={formErrors.supabase_url}
         leftIcon={<Ionicons name="flash-outline" size={18} color={colors.textMuted} />}
       />
 
@@ -274,12 +279,22 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
         />
         <Button
           title={deleting ? 'Deleting...' : 'Delete'}
-          onPress={handleDelete}
+          onPress={() => setShowDeleteConfirm(true)}
           loading={deleting}
           variant="danger"
           style={styles.flexBtn}
         />
       </View>
+
+      <ConfirmDialog
+        visible={showDeleteConfirm}
+        title="Delete Project"
+        message={`Are you sure you want to delete "${project.name}"? All associated tasks, milestones, and repositories will be removed.`}
+        confirmLabel="Delete Forever"
+        onConfirm={handleDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        loading={deleting}
+      />
     </Card>
   );
 }

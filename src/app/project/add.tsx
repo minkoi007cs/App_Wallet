@@ -253,6 +253,7 @@ export default function AddProjectScreen() {
             placeholder="https://my-app.vercel.app"
             value={frontendUrl}
             onChangeText={setFrontendUrl}
+            error={formErrors.frontend_url}
             leftIcon={<Ionicons name="globe-outline" size={18} color={colors.textMuted} />}
           />
 
@@ -261,6 +262,7 @@ export default function AddProjectScreen() {
             placeholder="https://api.my-app.com"
             value={backendUrl}
             onChangeText={setBackendUrl}
+            error={formErrors.backend_url}
             leftIcon={<Ionicons name="server-outline" size={18} color={colors.textMuted} />}
           />
 
@@ -269,6 +271,7 @@ export default function AddProjectScreen() {
             placeholder="https://supabase.com/dashboard/project/..."
             value={supabaseUrl}
             onChangeText={setSupabaseUrl}
+            error={formErrors.supabase_url}
             leftIcon={<Ionicons name="flash-outline" size={18} color={colors.textMuted} />}
           />
 

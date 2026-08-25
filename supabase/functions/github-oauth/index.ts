@@ -63,31 +63,41 @@ serve(async (req) => {
 
     const ghUser = await userResponse.json();
 
-    // 3. Store in Supabase external_accounts table securely
+    // 3. Authenticate Supabase user and store in external_accounts table
     const authHeader = req.headers.get('Authorization');
-    if (authHeader) {
-      const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-      const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-      const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-      const tokenUser = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
-      if (tokenUser.data.user) {
-        const userId = tokenUser.data.user.id;
-        await supabase.from('external_accounts').upsert({
-          user_id: userId,
-          provider: 'github',
-          account_id: String(ghUser.id),
-          account_name: ghUser.login,
-          access_token_encrypted: accessToken, // Encrypted at database level via vault / function
-          metadata: {
-            avatar_url: ghUser.avatar_url,
-            html_url: ghUser.html_url,
-            public_repos: ghUser.public_repos,
-          },
-          updated_at: new Date().toISOString(),
-        });
-      }
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization header required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const tokenUser = await supabase.auth.getUser(authHeader.replace('Bearer ', ''));
+    if (!tokenUser.data?.user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid user session' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const userId = tokenUser.data.user.id;
+    await supabase.from('external_accounts').upsert({
+      user_id: userId,
+      provider: 'github',
+      account_id: String(ghUser.id),
+      account_name: ghUser.login,
+      access_token_encrypted: accessToken,
+      metadata: {
+        avatar_url: ghUser.avatar_url,
+        html_url: ghUser.html_url,
+        public_repos: ghUser.public_repos,
+      },
+      updated_at: new Date().toISOString(),
+    });
 
     return new Response(
       JSON.stringify({

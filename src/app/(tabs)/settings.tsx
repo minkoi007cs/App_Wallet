@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Linking, TextInput as RNTextInput, Alert } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Linking, TextInput as RNTextInput } from 'react-native';
 import { Container } from '@/components/ui/Container';
 import { Header } from '@/components/ui/Header';
 import { Card } from '@/components/ui/Card';
@@ -12,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/services/auth';
 import { configureGitHubCredentials, getGitHubConfig, importAllGitHubReposAsProjects } from '@/services/github';
 import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
+import { showToast } from '@/components/ui/Toast';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -34,7 +35,11 @@ export default function SettingsScreen() {
         token: patToken.trim() || undefined,
       });
       await refresh();
-      Alert.alert('GitHub Connected', `Real GitHub account @${username.trim()} synchronized!`);
+      showToast({
+        type: 'success',
+        title: 'GitHub Synced',
+        message: `Account @${username.trim()} synchronized successfully!`,
+      });
     } finally {
       setSyncing(false);
     }
@@ -48,10 +53,18 @@ export default function SettingsScreen() {
         token: patToken.trim() || undefined,
       });
       const count = await importAllGitHubReposAsProjects();
-      Alert.alert('Import Complete', `Successfully imported ${count} real GitHub repositories into App Wallet!`);
+      showToast({
+        type: 'success',
+        title: 'Import Complete',
+        message: `Successfully imported ${count} repositories into App Wallet!`,
+      });
       router.push('/projects');
     } catch (err: any) {
-      Alert.alert('Import Failed', err.message || 'Could not import repositories.');
+      showToast({
+        type: 'error',
+        title: 'Import Failed',
+        message: err.message || 'Could not import repositories.',
+      });
     } finally {
       setImporting(false);
     }
@@ -60,14 +73,12 @@ export default function SettingsScreen() {
   const handleConnectGitHubOAuth = () => {
     const clientId = process.env.EXPO_PUBLIC_GITHUB_CLIENT_ID;
     if (!clientId || clientId === 'demo_client_id') {
-      Alert.alert(
-        'GitHub Sync Guide',
-        'Direct username & PAT sync is active! To create a Personal Access Token for private repos, open GitHub token settings.',
-        [
-          { text: 'OK' },
-          { text: 'Create Token on GitHub', onPress: () => Linking.openURL('https://github.com/settings/tokens/new?description=AppWallet&scopes=public_repo,read:user') },
-        ]
-      );
+      showToast({
+        type: 'info',
+        title: 'Opening GitHub Tokens',
+        message: 'Opening GitHub token creation page in browser...',
+      });
+      Linking.openURL('https://github.com/settings/tokens/new?description=AppWallet&scopes=public_repo,read:user');
       return;
     }
     const redirectUri = encodeURIComponent('https://ymunwzjmemxifjxsiugz.supabase.co/functions/v1/github-oauth');

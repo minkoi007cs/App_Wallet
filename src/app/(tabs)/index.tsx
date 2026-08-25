@@ -41,6 +41,13 @@ export default function HomeScreen() {
     }
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning ☀️';
+    if (hour < 18) return 'Good afternoon 🌤️';
+    return 'Good evening 🌙';
+  };
+
   return (
     <Container>
       <ScrollView
@@ -49,7 +56,7 @@ export default function HomeScreen() {
       >
         <Header
           title="App Wallet"
-          subtitle="Good morning 👋 — Developer Command Center"
+          subtitle={`${getGreeting()} — Developer Command Center`}
           action={
             <Button
               title="+ Add Project"
