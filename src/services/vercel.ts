@@ -18,87 +18,48 @@ export interface LinkVercelInput {
   latest_deployment_status?: string;
 }
 
-// Preview / Fallback Vercel projects
-const FALLBACK_VERCEL_PROJECTS: VercelProjectItem[] = [
-  {
-    id: 'v-101',
-    name: 'ai-study-assistant-web',
-    production_url: 'https://ai-study-assistant.vercel.app',
-    framework: 'nextjs',
-  },
-  {
-    id: 'v-102',
-    name: 'app-wallet-dashboard',
-    production_url: 'https://app-wallet.vercel.app',
-    framework: 'expo-web',
-  },
-  {
-    id: 'v-103',
-    name: 'subject-manager-portal',
-    production_url: 'https://subject-manager.vercel.app',
-    framework: 'react',
-  },
-];
+// ──────────────── HELPERS ────────────────
 
-let localIntegrationsStore: IntegrationRow[] = [
-  {
-    id: 'int-demo-1',
-    project_id: 'demo-1',
-    provider: 'vercel',
-    external_id: 'v-101',
-    name: 'ai-study-assistant-web',
-    status: 'confirmed',
-    production_url: 'https://ai-study-assistant.vercel.app',
-    latest_deployment_url: 'https://ai-study-assistant-a8f7c9.vercel.app',
-    latest_deployment_status: 'READY',
-    latest_deployment_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    metadata: { framework: 'nextjs' },
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
+async function requireAuth(): Promise<void> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session?.user) throw new Error('Not authenticated. Please sign in.');
+}
+
+// ──────────────── INTEGRATIONS CRUD ────────────────
 
 export async function fetchProjectIntegrations(projectId: string): Promise<IntegrationRow[]> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await (supabase.from('project_integrations') as any)
-        .select('*')
-        .eq('project_id', projectId);
-      if (!error && data) return data as IntegrationRow[];
-    }
-  } catch (err) {
-    console.warn('fetchProjectIntegrations notice:', err);
-  }
+  await requireAuth();
 
-  return localIntegrationsStore.filter((i) => i.project_id === projectId);
+  const { data, error } = await (supabase.from('project_integrations') as any)
+    .select('*')
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+  return (data || []) as IntegrationRow[];
 }
 
 export async function fetchAvailableVercelProjects(): Promise<VercelProjectItem[]> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await supabase.functions.invoke('vercel-sync', {
-        body: { action: 'list_projects' },
-      });
-      if (!error && data?.projects) {
-        return data.projects.map((p: any) => ({
-          id: p.id,
-          name: p.name,
-          production_url: p.targets?.production?.url ? `https://${p.targets.production.url}` : `https://${p.name}.vercel.app`,
-          framework: p.framework || 'nextjs',
-        }));
-      }
-    }
-  } catch (err) {
-    console.warn('fetchAvailableVercelProjects notice:', err);
-  }
+  await requireAuth();
 
-  return FALLBACK_VERCEL_PROJECTS;
+  const { data, error } = await supabase.functions.invoke('vercel-sync', {
+    body: { action: 'list_projects' },
+  });
+
+  if (error) throw error;
+  if (!data?.projects) return [];
+
+  return data.projects.map((p: any) => ({
+    id: p.id,
+    name: p.name,
+    production_url: p.targets?.production?.url
+      ? `https://${p.targets.production.url}`
+      : `https://${p.name}.vercel.app`,
+    framework: p.framework || 'nextjs',
+  }));
 }
 
 export async function linkVercelProjectToApp(input: LinkVercelInput): Promise<IntegrationRow> {
-  const { data: session } = await supabase.auth.getSession();
+  await requireAuth();
 
   const payload = {
     project_id: input.project_id,
@@ -113,31 +74,18 @@ export async function linkVercelProjectToApp(input: LinkVercelInput): Promise<In
     metadata: {},
   };
 
-  if (session?.session?.user) {
-    const { data, error } = await (supabase.from('project_integrations') as any)
-      .insert(payload)
-      .select()
-      .single();
-    if (!error && data) return data as IntegrationRow;
-  }
+  const { data, error } = await (supabase.from('project_integrations') as any)
+    .insert(payload)
+    .select()
+    .single();
 
-  const created: IntegrationRow = {
-    ...payload,
-    id: `int-${Date.now()}`,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  localIntegrationsStore = [...localIntegrationsStore, created];
-  return created;
+  if (error) throw error;
+  return data as IntegrationRow;
 }
 
 export async function unlinkVercelProjectFromApp(id: string): Promise<void> {
-  const { data: session } = await supabase.auth.getSession();
-  if (session?.session?.user) {
-    const { error } = await supabase.from('project_integrations').delete().eq('id', id);
-    if (error) throw error;
-  }
+  await requireAuth();
 
-  localIntegrationsStore = localIntegrationsStore.filter((i) => i.id !== id);
+  const { error } = await supabase.from('project_integrations').delete().eq('id', id);
+  if (error) throw error;
 }

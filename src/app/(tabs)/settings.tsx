@@ -65,13 +65,13 @@ export default function SettingsScreen() {
         'Direct username & PAT sync is active! To create a Personal Access Token for private repos, open GitHub token settings.',
         [
           { text: 'OK' },
-          { text: 'Create Token on GitHub', onPress: () => Linking.openURL('https://github.com/settings/tokens/new?description=AppWallet&scopes=repo,user') },
+          { text: 'Create Token on GitHub', onPress: () => Linking.openURL('https://github.com/settings/tokens/new?description=AppWallet&scopes=public_repo,read:user') },
         ]
       );
       return;
     }
     const redirectUri = encodeURIComponent('https://ymunwzjmemxifjxsiugz.supabase.co/functions/v1/github-oauth');
-    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=repo,user`;
+    const githubAuthUrl = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=public_repo,read:user`;
     Linking.openURL(githubAuthUrl);
   };
 
@@ -128,7 +128,11 @@ export default function SettingsScreen() {
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                   Live GitHub Data Connection
                 </Text>
-                <Badge label={isConnected ? 'CONNECTED' : 'DISCONNECTED'} variant="healthy" size="sm" />
+                <Badge
+                  label={isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                  variant={isConnected ? 'healthy' : 'neutral'}
+                  size="sm"
+                />
               </View>
               <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
                 Connect your real GitHub account to fetch live repositories & commits

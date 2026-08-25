@@ -82,9 +82,7 @@ export function computeProjectHealth(
     finalStatus = 'needs_attention';
   }
 
-  if (reasons.length === 0) {
-    reasons.push('Project health verified optimal. All metrics healthy.');
-  }
+  // If no negative rules triggered, reasons is empty (healthy)
 
   return {
     health_status: finalStatus,

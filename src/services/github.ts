@@ -32,9 +32,10 @@ export interface LinkRepoInput {
   open_issues_count?: number;
 }
 
-// Storage for user GitHub credentials (PAT or Username)
+// ──────────────── GITHUB CREDENTIALS (in-memory, will move to OAuth) ────────────────
+
 let activeGitHubToken: string | null = null;
-let activeGitHubUsername: string = 'minkoi007cs';
+let activeGitHubUsername: string = '';
 
 export function configureGitHubCredentials(config: { token?: string; username?: string }) {
   if (config.token !== undefined) activeGitHubToken = config.token.trim() || null;
@@ -48,110 +49,86 @@ export function getGitHubConfig() {
   };
 }
 
-let localLinkedReposStore: RepoRow[] = [
-  {
-    id: 'repo-1',
-    project_id: 'demo-1',
-    provider: 'github',
-    external_id: '102',
-    owner: 'minkoi007cs',
-    name: 'App_Wallet',
-    url: 'https://github.com/minkoi007cs/App_Wallet',
-    role: 'frontend',
-    default_branch: 'main',
-    visibility: 'public',
-    primary_language: 'TypeScript',
-    stars_count: 5,
-    forks_count: 0,
-    open_issues_count: 0,
-    latest_commit_sha: 'c9f8a1e',
-    latest_commit_message: 'feat: add real GitHub REST API integration',
-    latest_commit_author: 'Khoi Hoang',
-    latest_commit_date: new Date().toISOString(),
-    metadata: {},
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-];
+// ──────────────── HELPERS ────────────────
 
-let localActivityStore: ActivityEventRow[] = [
-  {
-    id: 'act-1',
-    project_id: 'demo-1',
-    event_type: 'github_commit',
-    title: 'Commit to minkoi007cs/App_Wallet',
-    description: 'feat: add real GitHub REST API integration',
-    metadata: { sha: 'c9f8a1e', author: 'Khoi Hoang', branch: 'main' },
-    created_at: new Date().toISOString(),
-  },
-];
+async function requireAuth(): Promise<void> {
+  const { data: session } = await supabase.auth.getSession();
+  if (!session?.session?.user) throw new Error('Not authenticated. Please sign in.');
+}
+
+// ──────────────── CONNECTION STATUS (real check, not hardcoded) ────────────────
 
 export async function getGitHubConnectionStatus(): Promise<{
   isConnected: boolean;
   accountName?: string;
 }> {
-  return { isConnected: true, accountName: activeGitHubUsername };
-}
+  // Check if we have a token and it works
+  if (!activeGitHubToken) {
+    return { isConnected: false };
+  }
 
-// All 11 Real Repositories from User Screenshot
-const ALL_SCREENSHOT_REPOSITORIES: GitHubRepoItem[] = [
-  { id: '201', owner: 'minkoi007cs', name: 'lifedashboard', full_name: 'minkoi007cs/lifedashboard', url: 'https://github.com/minkoi007cs/lifedashboard', default_branch: 'main', visibility: 'private', primary_language: 'TypeScript', stars_count: 2, forks_count: 0, open_issues_count: 1 },
-  { id: '202', owner: 'minkoi007cs', name: 'App_Wallet', full_name: 'minkoi007cs/App_Wallet', url: 'https://github.com/minkoi007cs/App_Wallet', default_branch: 'main', visibility: 'public', primary_language: 'TypeScript', stars_count: 5, forks_count: 0, open_issues_count: 0 },
-  { id: '203', owner: 'minkoi007cs', name: 'fitmatch_AI', full_name: 'minkoi007cs/fitmatch_AI', url: 'https://github.com/minkoi007cs/fitmatch_AI', default_branch: 'main', visibility: 'private', primary_language: 'Python', stars_count: 3, forks_count: 0, open_issues_count: 2 },
-  { id: '204', owner: 'johnnyhoang', name: 'TokenWallet', full_name: 'johnnyhoang/TokenWallet', url: 'https://github.com/johnnyhoang/TokenWallet', default_branch: 'main', visibility: 'private', primary_language: 'TypeScript', stars_count: 4, forks_count: 1, open_issues_count: 0 },
-  { id: '205', owner: 'johnnyhoang', name: 'family-management', full_name: 'johnnyhoang/family-management', url: 'https://github.com/johnnyhoang/family-management', default_branch: 'main', visibility: 'private', primary_language: 'JavaScript', stars_count: 1, forks_count: 0, open_issues_count: 0 },
-  { id: '206', owner: 'minkoi007cs', name: 'house_renting', full_name: 'minkoi007cs/house_renting', url: 'https://github.com/minkoi007cs/house_renting', default_branch: 'main', visibility: 'private', primary_language: 'Vue', stars_count: 2, forks_count: 0, open_issues_count: 1 },
-  { id: '207', owner: 'minkoi007cs', name: 'Canvas_AI', full_name: 'minkoi007cs/Canvas_AI', url: 'https://github.com/minkoi007cs/Canvas_AI', default_branch: 'main', visibility: 'private', primary_language: 'Python', stars_count: 6, forks_count: 1, open_issues_count: 3 },
-  { id: '208', owner: 'minkoi007cs', name: 'learning_AI', full_name: 'minkoi007cs/learning_AI', url: 'https://github.com/minkoi007cs/learning_AI', default_branch: 'main', visibility: 'private', primary_language: 'TypeScript', stars_count: 4, forks_count: 0, open_issues_count: 0 },
-  { id: '209', owner: 'emkay2007', name: 'money-management', full_name: 'emkay2007/money-management', url: 'https://github.com/emkay2007/money-management', default_branch: 'main', visibility: 'private', primary_language: 'React', stars_count: 2, forks_count: 0, open_issues_count: 0 },
-  { id: '210', owner: 'emkay2007', name: 'tbao_manage_device', full_name: 'emkay2007/tbao_manage_device', url: 'https://github.com/emkay2007/tbao_manage_device', default_branch: 'main', visibility: 'private', primary_language: 'Java', stars_count: 1, forks_count: 0, open_issues_count: 1 },
-  { id: '211', owner: 'emkay2007', name: 'ielts', full_name: 'emkay2007/ielts', url: 'https://github.com/emkay2007/ielts', default_branch: 'main', visibility: 'private', primary_language: 'TypeScript', stars_count: 3, forks_count: 0, open_issues_count: 0 },
-];
+  try {
+    const res = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `token ${activeGitHubToken}`,
+        Accept: 'application/vnd.github.v3+json',
+        'User-Agent': 'App-Wallet-Client',
+      },
+    });
+    if (res.ok) {
+      const user = await res.json();
+      activeGitHubUsername = user.login;
+      return { isConnected: true, accountName: user.login };
+    }
+  } catch {
+    // Token invalid or network error
+  }
+
+  return { isConnected: false };
+}
 
 // ──────────────── FETCH REAL GITHUB REPOSITORIES VIA REST API ────────────────
 
 export async function fetchUserGitHubRepositories(): Promise<GitHubRepoItem[]> {
-  try {
-    const headers: Record<string, string> = {
-      Accept: 'application/vnd.github.v3+json',
-      'User-Agent': 'App-Wallet-Client',
-    };
-
-    if (activeGitHubToken) {
-      headers.Authorization = `token ${activeGitHubToken}`;
-    }
-
-    // Use /user/repos with affiliation=owner,collaborator,organization_member when PAT is present
-    const apiUrl = activeGitHubToken
-      ? 'https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member&sort=updated'
-      : `https://api.github.com/users/${encodeURIComponent(activeGitHubUsername)}/repos?per_page=100&sort=updated`;
-
-    const res = await fetch(apiUrl, { headers });
-
-    if (res.ok) {
-      const rawData = await res.json();
-      if (Array.isArray(rawData) && rawData.length > 0) {
-        return rawData.map((item: any) => ({
-          id: String(item.id),
-          owner: item.owner?.login || activeGitHubUsername,
-          name: item.name,
-          full_name: item.full_name,
-          url: item.html_url,
-          default_branch: item.default_branch || 'main',
-          visibility: item.private ? 'private' : 'public',
-          primary_language: item.language || 'TypeScript',
-          stars_count: item.stargazers_count || 0,
-          forks_count: item.forks_count || 0,
-          open_issues_count: item.open_issues_count || 0,
-        }));
-      }
-    }
-  } catch (err) {
-    console.warn('fetchUserGitHubRepositories API warning:', err);
+  if (!activeGitHubToken && !activeGitHubUsername) {
+    throw new Error('GitHub not connected. Please enter your GitHub username or connect via OAuth.');
   }
 
-  // Returns all 11 real repos from screenshot if unauthenticated or private
-  return ALL_SCREENSHOT_REPOSITORIES;
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'App-Wallet-Client',
+  };
+
+  if (activeGitHubToken) {
+    headers.Authorization = `token ${activeGitHubToken}`;
+  }
+
+  const apiUrl = activeGitHubToken
+    ? 'https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member&sort=updated'
+    : `https://api.github.com/users/${encodeURIComponent(activeGitHubUsername)}/repos?per_page=100&sort=updated`;
+
+  const res = await fetch(apiUrl, { headers });
+
+  if (!res.ok) {
+    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+  }
+
+  const rawData = await res.json();
+  if (!Array.isArray(rawData)) return [];
+
+  return rawData.map((item: any) => ({
+    id: String(item.id),
+    owner: item.owner?.login || activeGitHubUsername,
+    name: item.name,
+    full_name: item.full_name,
+    url: item.html_url,
+    default_branch: item.default_branch || 'main',
+    visibility: item.private ? 'private' : 'public',
+    primary_language: item.language || 'Unknown',
+    stars_count: item.stargazers_count || 0,
+    forks_count: item.forks_count || 0,
+    open_issues_count: item.open_issues_count || 0,
+  }));
 }
 
 // ──────────────── FETCH REAL LATEST COMMIT FOR A REPO ────────────────
@@ -184,32 +161,28 @@ export async function fetchRealCommitInfo(owner: string, repo: string): Promise<
         };
       }
     }
-  } catch (err) {
-    console.warn('fetchRealCommitInfo warning:', err);
+  } catch {
+    // Non-critical — commit info is supplementary
   }
   return null;
 }
 
-export async function fetchProjectRepositories(projectId: string): Promise<RepoRow[]> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await (supabase.from('project_repositories') as any)
-        .select('*')
-        .eq('project_id', projectId);
-      if (!error && data) return data as RepoRow[];
-    }
-  } catch (err) {
-    console.warn('fetchProjectRepositories notice:', err);
-  }
+// ──────────────── REPOSITORY CRUD ────────────────
 
-  return localLinkedReposStore.filter((r) => r.project_id === projectId);
+export async function fetchProjectRepositories(projectId: string): Promise<RepoRow[]> {
+  await requireAuth();
+
+  const { data, error } = await (supabase.from('project_repositories') as any)
+    .select('*')
+    .eq('project_id', projectId);
+
+  if (error) throw error;
+  return (data || []) as RepoRow[];
 }
 
 export async function linkRepositoryToProject(input: LinkRepoInput): Promise<RepoRow> {
-  const { data: session } = await supabase.auth.getSession();
+  await requireAuth();
 
-  // Try fetching real latest commit info from GitHub REST API
   const realCommit = await fetchRealCommitInfo(input.owner, input.name);
 
   const payload = {
@@ -233,51 +206,36 @@ export async function linkRepositoryToProject(input: LinkRepoInput): Promise<Rep
     metadata: {},
   };
 
-  if (session?.session?.user) {
-    const { data, error } = await (supabase.from('project_repositories') as any)
-      .insert(payload)
-      .select()
-      .single();
-    if (!error && data) return data as RepoRow;
-  }
+  const { data, error } = await (supabase.from('project_repositories') as any)
+    .insert(payload)
+    .select()
+    .single();
 
-  const created: RepoRow = {
-    ...payload,
-    id: `repo-${Date.now()}`,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  };
-
-  localLinkedReposStore = [...localLinkedReposStore, created];
-  return created;
+  if (error) throw error;
+  return data as RepoRow;
 }
 
 export async function unlinkRepositoryFromProject(id: string): Promise<void> {
-  const { data: session } = await supabase.auth.getSession();
-  if (session?.session?.user) {
-    const { error } = await supabase.from('project_repositories').delete().eq('id', id);
-    if (error) throw error;
-  }
-  localLinkedReposStore = localLinkedReposStore.filter((r) => r.id !== id);
+  await requireAuth();
+
+  const { error } = await supabase.from('project_repositories').delete().eq('id', id);
+  if (error) throw error;
 }
 
-export async function fetchProjectActivityEvents(projectId?: string): Promise<ActivityEventRow[]> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      let query = (supabase.from('activity_events') as any).select('*').order('created_at', { ascending: false });
-      if (projectId) query = query.eq('project_id', projectId);
-      const { data, error } = await query;
-      if (!error && data) return data as ActivityEventRow[];
-    }
-  } catch (err) {
-    console.warn('fetchProjectActivityEvents notice:', err);
-  }
+// ──────────────── ACTIVITY EVENTS ────────────────
 
-  if (projectId) {
-    return localActivityStore.filter((a) => a.project_id === projectId);
-  }
-  return localActivityStore;
+export async function fetchProjectActivityEvents(projectId?: string): Promise<ActivityEventRow[]> {
+  await requireAuth();
+
+  let query = (supabase.from('activity_events') as any)
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if (projectId) query = query.eq('project_id', projectId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []) as ActivityEventRow[];
 }
 
 // ──────────────── AUTO-IMPORT ALL REAL GITHUB REPOS AS PROJECTS ────────────────
@@ -294,7 +252,7 @@ export async function importAllGitHubReposAsProjects(): Promise<number> {
         status: 'active',
         priority: 'medium',
         progress: 0,
-        tags: [repo.primary_language, 'GitHub'],
+        tags: [repo.primary_language, 'GitHub'].filter(Boolean),
       });
 
       await linkRepositoryToProject({
