@@ -5,7 +5,9 @@ import { Database } from '@/types/database';
 
 const supabaseUrl =
   process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://ymunwzjmemxifjxsiugz.supabase.co';
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key';
+const supabaseAnonKey =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltdW53emptZW14aWZqeHNpdWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1ODE4MzMsImV4cCI6MjEwMzE1NzgzM30.EZSp-mKu2_OSxJEU4ggHas8FPXAkkTttVNygh0hsoZ8';
 
 // Storage adapter for native, web, and node test environments
 const memoryStorage: Record<string, string> = {};
