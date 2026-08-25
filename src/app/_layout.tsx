@@ -1,10 +1,20 @@
-import { Stack } from 'expo-router';
+import { Stack, Redirect } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { useColorScheme } from 'react-native';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
+  const { loading, isAuthenticated } = useAuth();
+
+  if (loading) {
+    return null;
+  }
+
+  if (!isAuthenticated) {
+    return <Redirect href="/(auth)/login" />;
+  }
 
   return (
     <>

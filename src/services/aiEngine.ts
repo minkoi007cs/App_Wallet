@@ -23,80 +23,88 @@ export async function getSmartRecommendations(): Promise<SmartRecommendationItem
   const projects = await fetchProjects();
   const recommendations: SmartRecommendationItem[] = [];
 
-  for (const project of projects) {
-    if (project.status === 'archived' || project.status === 'completed') continue;
+  const activeProjects = projects.filter(
+    (p) => p.status !== 'archived' && p.status !== 'completed'
+  );
 
-    // Fetch tasks & repos for analysis
-    const tasks = await fetchTasksByProject(project.id);
-    const repos = await fetchProjectRepositories(project.id);
+  const results = await Promise.all(
+    activeProjects.map(async (project) => {
+      const projectRecs: SmartRecommendationItem[] = [];
+      const tasks = await fetchTasksByProject(project.id).catch(() => []);
+      const repos = project.repositories || [];
 
-    // Check 1: Critical health alerts
-    if (project.health_status === 'critical') {
-      recommendations.push({
-        id: `rec-crit-${project.id}`,
-        projectId: project.id,
-        projectName: project.name,
-        title: `Fix Critical Health Issues in ${project.name}`,
-        reason: project.health_reasons?.[0] || 'Project health is critical.',
-        priority: 'critical',
-        actionType: 'critical_health',
-        targetRoute: `/project/${project.id}`,
-      });
-    }
+      // Check 1: Critical health alerts
+      if (project.health_status === 'critical') {
+        projectRecs.push({
+          id: `rec-crit-${project.id}`,
+          projectId: project.id,
+          projectName: project.name,
+          title: `Fix Critical Health Issues in ${project.name}`,
+          reason: project.health_reasons?.[0] || 'Project health is critical.',
+          priority: 'critical',
+          actionType: 'critical_health',
+          targetRoute: `/project/${project.id}`,
+        });
+      }
 
-    // Check 2: Overdue tasks
-    const nowStr = new Date().toISOString().split('T')[0];
-    const overdueTasks = tasks.filter(
-      (t) => t.due_date && t.due_date < nowStr && t.status !== 'done'
-    );
+      // Check 2: Overdue tasks
+      const nowStr = new Date().toISOString().split('T')[0];
+      const overdueTasks = tasks.filter(
+        (t) => t.due_date && t.due_date < nowStr && t.status !== 'done'
+      );
 
-    if (overdueTasks.length > 0) {
-      const topOverdue = overdueTasks[0];
-      recommendations.push({
-        id: `rec-task-${topOverdue.id}`,
-        projectId: project.id,
-        projectName: project.name,
-        title: `Complete Overdue Task: ${topOverdue.title}`,
-        reason: `Due on ${topOverdue.due_date} (${overdueTasks.length} overdue total)`,
-        priority: topOverdue.priority === 'critical' || topOverdue.priority === 'high' ? 'critical' : 'high',
-        actionType: 'overdue_task',
-        targetRoute: `/project/tasks/${project.id}`,
-      });
-    }
+      if (overdueTasks.length > 0) {
+        const topOverdue = overdueTasks[0];
+        projectRecs.push({
+          id: `rec-task-${topOverdue.id}`,
+          projectId: project.id,
+          projectName: project.name,
+          title: `Complete Overdue Task: ${topOverdue.title}`,
+          reason: `Due on ${topOverdue.due_date} (${overdueTasks.length} overdue total)`,
+          priority: topOverdue.priority === 'critical' || topOverdue.priority === 'high' ? 'critical' : 'high',
+          actionType: 'overdue_task',
+          targetRoute: `/project/tasks/${project.id}`,
+        });
+      }
 
-    // Check 3: Active projects without linked GitHub repo
-    if (project.status === 'active' && repos.length === 0) {
-      recommendations.push({
-        id: `rec-repo-${project.id}`,
-        projectId: project.id,
-        projectName: project.name,
-        title: `Link GitHub Repository to ${project.name}`,
-        reason: 'Active project has no repository linked.',
-        priority: 'medium',
-        actionType: 'missing_repo',
-        targetRoute: `/project/${project.id}`,
-      });
-    }
+      // Check 3: Active projects without linked GitHub repo
+      if (project.status === 'active' && repos.length === 0) {
+        projectRecs.push({
+          id: `rec-repo-${project.id}`,
+          projectId: project.id,
+          projectName: project.name,
+          title: `Link GitHub Repository to ${project.name}`,
+          reason: 'Active project has no repository linked.',
+          priority: 'medium',
+          actionType: 'missing_repo',
+          targetRoute: `/project/${project.id}`,
+        });
+      }
 
-    // Check 4: High priority tasks in progress
-    const inProgressHigh = tasks.filter(
-      (t) => t.status === 'in_progress' && (t.priority === 'high' || t.priority === 'critical')
-    );
+      // Check 4: High priority tasks in progress
+      const inProgressHigh = tasks.filter(
+        (t) => t.status === 'in_progress' && (t.priority === 'high' || t.priority === 'critical')
+      );
 
-    if (inProgressHigh.length > 0) {
-      const targetTask = inProgressHigh[0];
-      recommendations.push({
-        id: `rec-inprog-${targetTask.id}`,
-        projectId: project.id,
-        projectName: project.name,
-        title: `Finish In-Progress Task: ${targetTask.title}`,
-        reason: `Priority: ${targetTask.priority.toUpperCase()}`,
-        priority: 'high',
-        actionType: 'active_focus',
-        targetRoute: `/project/tasks/${project.id}`,
-      });
-    }
-  }
+      if (inProgressHigh.length > 0) {
+        const targetTask = inProgressHigh[0];
+        projectRecs.push({
+          id: `rec-inprog-${targetTask.id}`,
+          projectId: project.id,
+          projectName: project.name,
+          title: `Finish In-Progress Task: ${targetTask.title}`,
+          reason: `Priority: ${targetTask.priority.toUpperCase()}`,
+          priority: 'high',
+          actionType: 'active_focus',
+          targetRoute: `/project/tasks/${project.id}`,
+        });
+      }
+
+      return projectRecs;
+    })
+  );
+
+  results.forEach((recs) => recommendations.push(...recs));
 
   // Sort recommendations by priority urgency
   const priorityScore: Record<string, number> = {

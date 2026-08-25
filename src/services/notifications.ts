@@ -14,195 +14,110 @@ export interface NotificationPreferenceUpdates {
   ai_insights?: boolean;
 }
 
-// Fallback initial dataset for preview / offline mode
-let localNotificationsStore: NotificationRow[] = [
-  {
-    id: 'notif-1',
-    user_id: 'dev-user',
-    title: '⚠️ Overdue Tasks Alert',
-    body: 'Subject Manager has 2 tasks overdue.',
-    type: 'deadlines',
-    is_read: false,
-    link_url: '/project/demo-2',
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-2',
-    user_id: 'dev-user',
-    title: '🚀 GitHub Commit Recorded',
-    body: 'Commit a8f7c9e pushed to minkoi007cs/App_Wallet',
-    type: 'github_activity',
-    is_read: false,
-    link_url: '/project/demo-3',
-    created_at: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: 'notif-3',
-    user_id: 'dev-user',
-    title: '✅ Vercel Deployment Successful',
-    body: 'ai-study-assistant-web deployed to production (READY)',
-    type: 'deployment_failures',
-    is_read: true,
-    link_url: '/project/demo-1',
-    created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-  },
-];
+// ──────────────── HELPERS ────────────────
 
-let localPreferencesStore: NotificationPreferenceRow = {
-  user_id: 'dev-user',
-  github_activity: true,
-  deployment_failures: true,
-  new_repositories: true,
-  deadlines: true,
-  inactive_projects: true,
-  ai_insights: true,
-  updated_at: new Date().toISOString(),
-};
+async function requireAuth(): Promise<string> {
+  const { data: session } = await supabase.auth.getSession();
+  const userId = session?.session?.user?.id;
+  if (!userId) throw new Error('Not authenticated. Please sign in.');
+  return userId;
+}
+
+// ──────────────── NOTIFICATIONS CRUD ────────────────
 
 export async function fetchNotifications(): Promise<{
   notifications: NotificationRow[];
   unreadCount: number;
 }> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await (supabase.from('notifications') as any)
-        .select('*')
-        .order('created_at', { ascending: false });
+  await requireAuth();
 
-      if (!error && data) {
-        const list = data as NotificationRow[];
-        const unreadCount = list.filter((n) => !n.is_read).length;
-        return { notifications: list, unreadCount };
-      }
-    }
-  } catch (err) {
-    console.warn('fetchNotifications notice:', err);
-  }
+  const { data, error } = await (supabase.from('notifications') as any)
+    .select('*')
+    .order('created_at', { ascending: false });
 
-  const unreadCount = localNotificationsStore.filter((n) => !n.is_read).length;
-  return { notifications: localNotificationsStore, unreadCount };
+  if (error) throw error;
+
+  const list = (data || []) as NotificationRow[];
+  const unreadCount = list.filter((n) => !n.is_read).length;
+  return { notifications: list, unreadCount };
 }
 
 export async function markNotificationAsRead(id: string): Promise<void> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      await (supabase.from('notifications') as any)
-        .update({ is_read: true })
-        .eq('id', id);
-    }
-  } catch (err) {
-    console.warn('markNotificationAsRead notice:', err);
-  }
+  await requireAuth();
 
-  const idx = localNotificationsStore.findIndex((n) => n.id === id);
-  if (idx !== -1) {
-    localNotificationsStore[idx].is_read = true;
-  }
+  const { error } = await (supabase.from('notifications') as any)
+    .update({ is_read: true })
+    .eq('id', id);
+
+  if (error) throw error;
 }
 
 export async function markAllNotificationsAsRead(): Promise<void> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      await (supabase.from('notifications') as any)
-        .update({ is_read: true })
-        .eq('is_read', false);
-    }
-  } catch (err) {
-    console.warn('markAllNotificationsAsRead notice:', err);
-  }
+  await requireAuth();
 
-  localNotificationsStore = localNotificationsStore.map((n) => ({ ...n, is_read: true }));
+  const { error } = await (supabase.from('notifications') as any)
+    .update({ is_read: true })
+    .eq('is_read', false);
+
+  if (error) throw error;
 }
 
 export async function deleteNotification(id: string): Promise<void> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      await supabase.from('notifications').delete().eq('id', id);
-    }
-  } catch (err) {
-    console.warn('deleteNotification notice:', err);
-  }
+  await requireAuth();
 
-  localNotificationsStore = localNotificationsStore.filter((n) => n.id !== id);
+  const { error } = await supabase.from('notifications').delete().eq('id', id);
+  if (error) throw error;
 }
 
+// ──────────────── PREFERENCES ────────────────
+
 export async function fetchNotificationPreferences(): Promise<NotificationPreferenceRow> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await (supabase.from('notification_preferences') as any)
-        .select('*')
-        .eq('user_id', session.session.user.id)
-        .single();
+  const userId = await requireAuth();
 
-      if (!error && data) {
-        return data as NotificationPreferenceRow;
-      }
-    }
-  } catch (err) {
-    console.warn('fetchNotificationPreferences notice:', err);
-  }
+  const { data, error } = await (supabase.from('notification_preferences') as any)
+    .select('*')
+    .eq('user_id', userId)
+    .single();
 
-  return localPreferencesStore;
+  if (error) throw error;
+  return data as NotificationPreferenceRow;
 }
 
 export async function updateNotificationPreferences(
   updates: NotificationPreferenceUpdates
 ): Promise<NotificationPreferenceRow> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const userId = session.session.user.id;
-      const { data, error } = await (supabase.from('notification_preferences') as any)
-        .upsert({
-          user_id: userId,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
+  const userId = await requireAuth();
 
-      if (!error && data) {
-        return data as NotificationPreferenceRow;
-      }
-    }
-  } catch (err) {
-    console.warn('updateNotificationPreferences notice:', err);
-  }
+  const { data, error } = await (supabase.from('notification_preferences') as any)
+    .upsert({
+      user_id: userId,
+      ...updates,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
 
-  localPreferencesStore = {
-    ...localPreferencesStore,
-    ...updates,
-    updated_at: new Date().toISOString(),
-  };
-
-  return localPreferencesStore;
+  if (error) throw error;
+  return data as NotificationPreferenceRow;
 }
 
-export async function generateAutomaticNotifications(): Promise<void> {
-  const projects = await fetchProjects();
-  const newNotifs: NotificationRow[] = [];
+// ──────────────── AUTO-GENERATE (server-side in future) ────────────────
 
-  projects.forEach((p) => {
+export async function generateAutomaticNotifications(): Promise<void> {
+  const userId = await requireAuth();
+  const projects = await fetchProjects();
+
+  for (const p of projects) {
     if (p.health_status === 'critical') {
-      newNotifs.push({
-        id: `gen-${Date.now()}-${p.id}`,
-        user_id: 'dev-user',
+      const { error } = await (supabase.from('notifications') as any).insert({
+        user_id: userId,
         title: `🚨 Critical Alert: ${p.name}`,
         body: p.health_reasons?.[0] || 'Project health is critical.',
         type: 'deadlines',
         is_read: false,
         link_url: `/project/${p.id}`,
-        created_at: new Date().toISOString(),
       });
+      if (error) console.warn('Failed to insert notification:', error);
     }
-  });
-
-  if (newNotifs.length > 0) {
-    localNotificationsStore = [...newNotifs, ...localNotificationsStore];
   }
 }

@@ -24,12 +24,12 @@ export function useProjects(initialFilters: ProjectFilterOptions = {}) {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState<ProjectFilterOptions>(initialFilters);
+  const { searchQuery, status, priority, healthStatus, sortBy, sortOrder } = initialFilters;
 
-  const executeFetch = useCallback(async (currentFilters: ProjectFilterOptions) => {
+  const executeFetch = useCallback(async () => {
     setError(null);
     try {
-      const data = await fetchProjects(currentFilters);
+      const data = await fetchProjects({ searchQuery, status, priority, healthStatus, sortBy, sortOrder });
       setProjects(data);
       const dashboardStats = await fetchDashboardStats();
       setStats(dashboardStats);
@@ -38,35 +38,35 @@ export function useProjects(initialFilters: ProjectFilterOptions = {}) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchQuery, status, priority, healthStatus, sortBy, sortOrder]);
 
   useEffect(() => {
     let active = true;
     (async () => {
       if (active) {
-        await executeFetch(filters);
+        await executeFetch();
       }
     })();
     return () => {
       active = false;
     };
-  }, [filters, executeFetch]);
+  }, [executeFetch]);
 
   const handleCreate = async (input: CreateProjectInput) => {
     const created = await createProject(input);
-    await executeFetch(filters);
+    await executeFetch();
     return created;
   };
 
   const handleUpdate = async (id: string, updates: Partial<CreateProjectInput>) => {
     const updated = await updateProject(id, updates);
-    await executeFetch(filters);
+    await executeFetch();
     return updated;
   };
 
   const handleDelete = async (id: string) => {
     await deleteProject(id);
-    await executeFetch(filters);
+    await executeFetch();
   };
 
   return {
@@ -74,9 +74,8 @@ export function useProjects(initialFilters: ProjectFilterOptions = {}) {
     stats,
     loading,
     error,
-    filters,
-    setFilters,
-    reload: () => executeFetch(filters),
+    filters: initialFilters,
+    reload: () => executeFetch(),
     createProject: handleCreate,
     updateProject: handleUpdate,
     deleteProject: handleDelete,
