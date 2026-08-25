@@ -330,9 +330,6 @@ export async function importAllGitHubReposAsProjects(): Promise<number> {
         repo.name.toLowerCase().includes('backend') ||
         repo.name.toLowerCase().includes('server') ||
         repo.name.toLowerCase().includes('api');
-      const vercelUrl = `https://${repo.name.toLowerCase().replace(/_/g, '-')}.vercel.app`;
-      const frontendUrl = !isBackend ? vercelUrl : undefined;
-      const backendUrl = isBackend ? vercelUrl : undefined;
 
       const createdProject = await createProject({
         name: repo.name,
@@ -341,8 +338,9 @@ export async function importAllGitHubReposAsProjects(): Promise<number> {
         priority: 'medium',
         progress: 0,
         tags: [repo.primary_language, 'GitHub'].filter(Boolean),
-        frontend_url: frontendUrl,
-        backend_url: backendUrl,
+        frontend_url: undefined,
+        backend_url: undefined,
+        supabase_url: undefined,
       });
 
       await linkRepositoryToProject({

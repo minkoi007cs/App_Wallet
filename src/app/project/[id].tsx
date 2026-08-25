@@ -25,7 +25,7 @@ import { LinkVercelModal } from '@/components/modals/LinkVercelModal';
 import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
 import { AIAgentPromptModal } from '@/components/modals/AIAgentPromptModal';
 import { checkSupabaseHealth, SupabaseHealthResult, getSupabaseDashboardUrl } from '@/services/supabaseStatus';
-import { autoDetectAndSaveProjectUrls } from '@/services/urlDetector';
+import { autoDetectAndSaveProjectUrls, resetProjectDeploymentUrls } from '@/services/urlDetector';
 import { showToast } from '@/components/ui/Toast';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,6 +53,7 @@ export default function ProjectDetailScreen() {
   const [supabaseHealth, setSupabaseHealth] = useState<SupabaseHealthResult | null>(null);
   const [checkingDb, setCheckingDb] = useState(false);
   const [autoDetecting, setAutoDetecting] = useState(false);
+  const [resettingUrls, setResettingUrls] = useState(false);
 
   const checkDbHealth = React.useCallback(async () => {
     if (!project?.supabase_url) {
@@ -100,6 +101,28 @@ export default function ProjectDetailScreen() {
       });
     } finally {
       setAutoDetecting(false);
+    }
+  };
+
+  const handleResetUrls = async () => {
+    setResettingUrls(true);
+    try {
+      await resetProjectDeploymentUrls(projectId);
+      await reload();
+      setSupabaseHealth(null);
+      showToast({
+        type: 'info',
+        title: 'URLs Reset',
+        message: 'Cleared all deployment & Supabase URLs for this project.',
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Reset Failed',
+        message: err.message || 'Could not reset URLs.',
+      });
+    } finally {
+      setResettingUrls(false);
     }
   };
 
@@ -306,13 +329,22 @@ export default function ProjectDetailScreen() {
                     Deployment & Service Links
                   </Text>
                 </View>
-                <Button
-                  title={autoDetecting ? 'Detecting...' : 'Auto-Detect URLs'}
-                  onPress={handleAutoDetectUrls}
-                  loading={autoDetecting}
-                  variant="outline"
-                  size="sm"
-                />
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <Button
+                    title={autoDetecting ? 'Detecting...' : 'Auto-Detect'}
+                    onPress={handleAutoDetectUrls}
+                    loading={autoDetecting}
+                    variant="outline"
+                    size="sm"
+                  />
+                  <Button
+                    title={resettingUrls ? 'Resetting...' : 'Reset URLs'}
+                    onPress={handleResetUrls}
+                    loading={resettingUrls}
+                    variant="ghost"
+                    size="sm"
+                  />
+                </View>
               </View>
 
               <View style={styles.linksGrid}>
