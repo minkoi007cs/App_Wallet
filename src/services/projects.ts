@@ -121,10 +121,20 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectW
     metadata: {},
   };
 
-  const { data, error } = await (supabase.from('projects') as any)
+  let { data, error } = await (supabase.from('projects') as any)
     .insert(payload)
     .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
     .single();
+
+  if (error && (error.code === '42703' || error.message?.includes('frontend_url'))) {
+    const { frontend_url: _f, backend_url: _b, supabase_url: _s, ...basePayload } = payload;
+    const retry = await (supabase.from('projects') as any)
+      .insert(basePayload)
+      .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
+      .single();
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) throw error;
   return data as ProjectWithDetails;
