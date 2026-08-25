@@ -47,6 +47,9 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
   const [startDate, setStartDate] = useState(project.start_date || '');
   const [targetDate, setTargetDate] = useState(project.target_date || '');
   const [tagsInput, setTagsInput] = useState(project.tags.join(', '));
+  const [frontendUrl, setFrontendUrl] = useState(project.frontend_url || '');
+  const [backendUrl, setBackendUrl] = useState(project.backend_url || '');
+  const [supabaseUrl, setSupabaseUrl] = useState(project.supabase_url || '');
 
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -69,6 +72,9 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
       start_date: startDate || undefined,
       target_date: targetDate || undefined,
       tags,
+      frontend_url: frontendUrl.trim() || undefined,
+      backend_url: backendUrl.trim() || undefined,
+      supabase_url: supabaseUrl.trim() || undefined,
     };
 
     const validation = validateProjectInput(inputData);
@@ -230,6 +236,31 @@ function EditProjectForm({ project }: { project: ProjectWithDetails }) {
         value={tagsInput}
         onChangeText={setTagsInput}
         leftIcon={<Ionicons name="pricetags-outline" size={18} color={colors.textMuted} />}
+      />
+
+      {/* Deployment Links */}
+      <TextInput
+        label="Frontend Vercel URL"
+        placeholder="https://my-app.vercel.app"
+        value={frontendUrl}
+        onChangeText={setFrontendUrl}
+        leftIcon={<Ionicons name="globe-outline" size={18} color={colors.textMuted} />}
+      />
+
+      <TextInput
+        label="Backend Vercel / API URL"
+        placeholder="https://api.my-app.com"
+        value={backendUrl}
+        onChangeText={setBackendUrl}
+        leftIcon={<Ionicons name="server-outline" size={18} color={colors.textMuted} />}
+      />
+
+      <TextInput
+        label="Supabase Cloud DB URL"
+        placeholder="https://supabase.com/dashboard/project/..."
+        value={supabaseUrl}
+        onChangeText={setSupabaseUrl}
+        leftIcon={<Ionicons name="flash-outline" size={18} color={colors.textMuted} />}
       />
 
       {/* Action Buttons */}
