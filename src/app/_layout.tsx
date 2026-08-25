@@ -1,25 +1,40 @@
-import { Stack, Redirect } from 'expo-router';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { useColorScheme } from 'react-native';
+import React, { useEffect } from 'react';
+import { useColorScheme, View, ActivityIndicator } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
-
 import { Toast } from '@/components/ui/Toast';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { loading, isAuthenticated } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (!isAuthenticated && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (isAuthenticated && inAuthGroup) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, loading, segments, router]);
 
   if (loading) {
-    return null;
-  }
-
-  if (!isAuthenticated) {
     return (
-      <>
-        <Redirect href="/(auth)/login" />
-        <Toast />
-      </>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colorScheme === 'dark' ? '#09090B' : '#FFFFFF',
+        }}
+      >
+        <ActivityIndicator size="large" color="#4F46E5" />
+      </View>
     );
   }
 
