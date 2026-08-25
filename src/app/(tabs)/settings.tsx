@@ -10,6 +10,7 @@ import { useTheme } from '@/hooks/useTheme';
 import { useGitHubAccount } from '@/hooks/useGitHub';
 import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/services/auth';
+import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function SettingsScreen() {
@@ -58,6 +59,9 @@ export default function SettingsScreen() {
             style={styles.actionBtn}
           />
         </Card>
+
+        {/* Notification Preferences Section */}
+        <NotificationPreferencesCard />
 
         {/* GitHub Integration */}
         <Card style={styles.sectionCard}>
@@ -109,7 +113,7 @@ export default function SettingsScreen() {
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
                   Vercel Integration
                 </Text>
-                <Badge label="PHASE 7" variant="neutral" size="sm" />
+                <Badge label="CONNECTED" variant="healthy" size="sm" />
               </View>
               <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
                 Deployments & domain URL synchronization
