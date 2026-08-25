@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { Database, RepoRole } from '@/types/database';
+import { createProject } from '@/services/projects';
 
 export type RepoRow = Database['public']['Tables']['project_repositories']['Row'];
 export type ActivityEventRow = Database['public']['Tables']['activity_events']['Row'];
@@ -31,48 +32,21 @@ export interface LinkRepoInput {
   open_issues_count?: number;
 }
 
-// Fallback Repositories for offline/preview mode
-const FALLBACK_AVAILABLE_REPOS: GitHubRepoItem[] = [
-  {
-    id: '101',
-    owner: 'minkoi007cs',
-    name: 'App_Wallet',
-    full_name: 'minkoi007cs/App_Wallet',
-    url: 'https://github.com/minkoi007cs/App_Wallet',
-    default_branch: 'main',
-    visibility: 'public',
-    primary_language: 'TypeScript',
-    stars_count: 5,
-    forks_count: 0,
-    open_issues_count: 0,
-  },
-  {
-    id: '102',
-    owner: 'khoihoang',
-    name: 'ai-study-backend',
-    full_name: 'khoihoang/ai-study-backend',
-    url: 'https://github.com/khoihoang/ai-study-backend',
-    default_branch: 'main',
-    visibility: 'public',
-    primary_language: 'Python',
-    stars_count: 12,
-    forks_count: 3,
-    open_issues_count: 2,
-  },
-  {
-    id: '103',
-    owner: 'khoihoang',
-    name: 'subject-manager-mobile',
-    full_name: 'khoihoang/subject-manager-mobile',
-    url: 'https://github.com/khoihoang/subject-manager-mobile',
-    default_branch: 'main',
-    visibility: 'private',
-    primary_language: 'TypeScript',
-    stars_count: 8,
-    forks_count: 1,
-    open_issues_count: 1,
-  },
-];
+// Storage for user GitHub credentials (PAT or Username)
+let activeGitHubToken: string | null = null;
+let activeGitHubUsername: string = 'minkoi007cs';
+
+export function configureGitHubCredentials(config: { token?: string; username?: string }) {
+  if (config.token !== undefined) activeGitHubToken = config.token.trim() || null;
+  if (config.username) activeGitHubUsername = config.username.trim();
+}
+
+export function getGitHubConfig() {
+  return {
+    token: activeGitHubToken,
+    username: activeGitHubUsername,
+  };
+}
 
 let localLinkedReposStore: RepoRow[] = [
   {
@@ -110,55 +84,108 @@ let localActivityStore: ActivityEventRow[] = [
     metadata: { sha: 'c9f8a1e', author: 'Khoi Hoang', branch: 'main' },
     created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
   },
-  {
-    id: 'act-2',
-    project_id: 'demo-3',
-    event_type: 'project_updated',
-    title: 'Phase 4 Tasks & Milestones Shipped',
-    description: 'Completed Kanban task board and timeline milestone tracking.',
-    metadata: { phase: 4 },
-    created_at: new Date(Date.now() - 12 * 3600 * 1000).toISOString(),
-  },
 ];
 
 export async function getGitHubConnectionStatus(): Promise<{
   isConnected: boolean;
   accountName?: string;
 }> {
-  try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data } = await (supabase.from('external_accounts') as any)
-        .select('account_name')
-        .eq('provider', 'github')
-        .single();
-      if (data) {
-        return { isConnected: true, accountName: data.account_name || 'GitHub User' };
-      }
-    }
-  } catch (err) {
-    console.warn('GitHub connection status check notice:', err);
-  }
-
-  return { isConnected: true, accountName: 'minkoi007cs' };
+  return { isConnected: true, accountName: activeGitHubUsername };
 }
+
+// ──────────────── FETCH REAL GITHUB REPOSITORIES VIA REST API ────────────────
 
 export async function fetchUserGitHubRepositories(): Promise<GitHubRepoItem[]> {
   try {
-    const { data: session } = await supabase.auth.getSession();
-    if (session?.session?.user) {
-      const { data, error } = await supabase.functions.invoke('github-sync', {
-        body: { action: 'list_user_repos' },
-      });
-      if (!error && data?.repos) {
-        return data.repos;
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'App-Wallet-Client',
+    };
+
+    if (activeGitHubToken) {
+      headers.Authorization = `token ${activeGitHubToken}`;
+    }
+
+    const apiUrl = activeGitHubToken
+      ? 'https://api.github.com/user/repos?per_page=100&sort=updated'
+      : `https://api.github.com/users/${encodeURIComponent(activeGitHubUsername)}/repos?per_page=100&sort=updated`;
+
+    const res = await fetch(apiUrl, { headers });
+
+    if (res.ok) {
+      const rawData = await res.json();
+      if (Array.isArray(rawData)) {
+        return rawData.map((item: any) => ({
+          id: String(item.id),
+          owner: item.owner?.login || activeGitHubUsername,
+          name: item.name,
+          full_name: item.full_name,
+          url: item.html_url,
+          default_branch: item.default_branch || 'main',
+          visibility: item.private ? 'private' : 'public',
+          primary_language: item.language || 'TypeScript',
+          stars_count: item.stargazers_count || 0,
+          forks_count: item.forks_count || 0,
+          open_issues_count: item.open_issues_count || 0,
+        }));
       }
     }
   } catch (err) {
-    console.warn('fetchUserGitHubRepositories notice:', err);
+    console.warn('fetchUserGitHubRepositories API warning:', err);
   }
 
-  return FALLBACK_AVAILABLE_REPOS;
+  // Fallback if network blocks or username has no public repos
+  return [
+    {
+      id: '101',
+      owner: activeGitHubUsername,
+      name: 'App_Wallet',
+      full_name: `${activeGitHubUsername}/App_Wallet`,
+      url: `https://github.com/${activeGitHubUsername}/App_Wallet`,
+      default_branch: 'main',
+      visibility: 'public',
+      primary_language: 'TypeScript',
+      stars_count: 5,
+      forks_count: 0,
+      open_issues_count: 0,
+    },
+  ];
+}
+
+// ──────────────── FETCH REAL LATEST COMMIT FOR A REPO ────────────────
+
+export async function fetchRealCommitInfo(owner: string, repo: string): Promise<{
+  sha: string;
+  message: string;
+  author: string;
+  date: string;
+} | null> {
+  try {
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github.v3+json',
+      'User-Agent': 'App-Wallet-Client',
+    };
+    if (activeGitHubToken) {
+      headers.Authorization = `token ${activeGitHubToken}`;
+    }
+
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`, { headers });
+    if (res.ok) {
+      const data = await res.json();
+      const firstCommit = data?.[0];
+      if (firstCommit) {
+        return {
+          sha: firstCommit.sha?.substring(0, 7) || 'head',
+          message: firstCommit.commit?.message || 'Updated repository',
+          author: firstCommit.commit?.author?.name || owner,
+          date: firstCommit.commit?.author?.date || new Date().toISOString(),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('fetchRealCommitInfo warning:', err);
+  }
+  return null;
 }
 
 export async function fetchProjectRepositories(projectId: string): Promise<RepoRow[]> {
@@ -180,10 +207,13 @@ export async function fetchProjectRepositories(projectId: string): Promise<RepoR
 export async function linkRepositoryToProject(input: LinkRepoInput): Promise<RepoRow> {
   const { data: session } = await supabase.auth.getSession();
 
+  // Try fetching real latest commit info from GitHub REST API
+  const realCommit = await fetchRealCommitInfo(input.owner, input.name);
+
   const payload = {
     project_id: input.project_id,
     provider: 'github' as const,
-    external_id: `ext-${Date.now()}`,
+    external_id: `gh-${Date.now()}`,
     owner: input.owner,
     name: input.name,
     url: input.url,
@@ -194,10 +224,10 @@ export async function linkRepositoryToProject(input: LinkRepoInput): Promise<Rep
     stars_count: input.stars_count || 0,
     forks_count: input.forks_count || 0,
     open_issues_count: input.open_issues_count || 0,
-    latest_commit_sha: 'main-head',
-    latest_commit_message: 'Initial project repository link',
-    latest_commit_author: input.owner,
-    latest_commit_date: new Date().toISOString(),
+    latest_commit_sha: realCommit?.sha || 'main-head',
+    latest_commit_message: realCommit?.message || 'Initial linked GitHub repository',
+    latest_commit_author: realCommit?.author || input.owner,
+    latest_commit_date: realCommit?.date || new Date().toISOString(),
     metadata: {},
   };
 
@@ -246,4 +276,43 @@ export async function fetchProjectActivityEvents(projectId?: string): Promise<Ac
     return localActivityStore.filter((a) => a.project_id === projectId);
   }
   return localActivityStore;
+}
+
+// ──────────────── AUTO-IMPORT ALL REAL GITHUB REPOS AS PROJECTS ────────────────
+
+export async function importAllGitHubReposAsProjects(): Promise<number> {
+  const realRepos = await fetchUserGitHubRepositories();
+  let importedCount = 0;
+
+  for (const repo of realRepos) {
+    try {
+      const createdProject = await createProject({
+        name: repo.name,
+        description: `Imported from GitHub ${repo.full_name} (${repo.primary_language})`,
+        status: 'active',
+        priority: 'medium',
+        progress: 0,
+        tags: [repo.primary_language, 'GitHub'],
+      });
+
+      await linkRepositoryToProject({
+        project_id: createdProject.id,
+        owner: repo.owner,
+        name: repo.name,
+        url: repo.url,
+        role: 'frontend',
+        default_branch: repo.default_branch,
+        primary_language: repo.primary_language,
+        stars_count: repo.stars_count,
+        forks_count: repo.forks_count,
+        open_issues_count: repo.open_issues_count,
+      });
+
+      importedCount++;
+    } catch (err) {
+      console.warn(`Failed to auto-import ${repo.full_name}:`, err);
+    }
+  }
+
+  return importedCount;
 }
