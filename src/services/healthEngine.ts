@@ -10,7 +10,8 @@ export function computeProjectHealth(
   project: ProjectWithDetails,
   tasks: any[] = [],
   repositories: any[] = [],
-  integrations: any[] = []
+  integrations: any[] = [],
+  supabaseHealth?: { status: string; message?: string }
 ): HealthDiagnosticResult {
   const reasons: string[] = [];
   let isCritical = false;
@@ -71,6 +72,12 @@ export function computeProjectHealth(
     isCritical = true;
   }
 
+  // Rule 6: Supabase Database Pause / Inactivity check
+  if (supabaseHealth && (supabaseHealth.status === 'paused' || supabaseHealth.status === 'unreachable')) {
+    reasons.push('Supabase Cloud database is PAUSED or unreachable. Open Supabase Console to wake/unpause.');
+    isCritical = true;
+  }
+
   // Calculate final health state
   let finalStatus: HealthState = 'healthy';
   if (isCritical) {
@@ -78,8 +85,6 @@ export function computeProjectHealth(
   } else if (isNeedsAttention) {
     finalStatus = 'needs_attention';
   }
-
-  // If no negative rules triggered, reasons is empty (healthy)
 
   return {
     health_status: finalStatus,
@@ -92,6 +97,7 @@ export async function evaluateAndSaveProjectHealth(projectId: string): Promise<H
   const { fetchTasksByProject } = await import('./tasks');
   const { fetchProjectRepositories } = await import('./github');
   const { fetchProjectIntegrations } = await import('./vercel');
+  const { checkSupabaseHealth } = await import('./supabaseStatus');
 
   const project = await fetchProjectById(projectId);
   if (!project) {
@@ -102,7 +108,12 @@ export async function evaluateAndSaveProjectHealth(projectId: string): Promise<H
   const repositories = await fetchProjectRepositories(projectId);
   const integrations = await fetchProjectIntegrations(projectId);
 
-  const result = computeProjectHealth(project, tasks, repositories, integrations);
+  let supabaseHealth;
+  if (project.supabase_url) {
+    supabaseHealth = await checkSupabaseHealth(project.supabase_url).catch(() => undefined);
+  }
+
+  const result = computeProjectHealth(project, tasks, repositories, integrations, supabaseHealth);
 
   // Update in database / local store
   await updateProject(projectId, {
