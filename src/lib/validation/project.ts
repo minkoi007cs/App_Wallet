@@ -9,6 +9,9 @@ export interface CreateProjectInput {
   start_date?: string;
   target_date?: string;
   tags: string[];
+  frontend_url?: string;
+  backend_url?: string;
+  supabase_url?: string;
 }
 
 export function validateProjectInput(input: CreateProjectInput): {

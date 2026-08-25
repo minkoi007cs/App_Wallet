@@ -242,6 +242,87 @@ export default function ProjectDetailScreen() {
               onRefreshFinished={reload}
             />
 
+            {/* Deployment & Service Links Card */}
+            <Card style={styles.sectionCard}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="link-outline" size={18} color={colors.brand} />
+                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                  Deployment & Service Links
+                </Text>
+              </View>
+
+              <View style={styles.linksGrid}>
+                {/* Frontend Vercel Link */}
+                <View style={styles.linkRow}>
+                  <Ionicons name="globe-outline" size={18} color={colors.statusHealthy} />
+                  <View style={styles.linkTextCol}>
+                    <Text style={[styles.linkLabel, { color: colors.textPrimary }]}>
+                      Frontend Vercel URL
+                    </Text>
+                    <Text style={[styles.linkSubText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {project.frontend_url || 'Not configured'}
+                    </Text>
+                  </View>
+                  {project.frontend_url ? (
+                    <Button
+                      title="Launch"
+                      onPress={() => Linking.openURL(project.frontend_url!)}
+                      variant="primary"
+                      size="sm"
+                    />
+                  ) : (
+                    <Badge label="UNSET" variant="neutral" size="sm" />
+                  )}
+                </View>
+
+                {/* Backend Vercel / API Link */}
+                <View style={styles.linkRow}>
+                  <Ionicons name="server-outline" size={18} color={colors.accent} />
+                  <View style={styles.linkTextCol}>
+                    <Text style={[styles.linkLabel, { color: colors.textPrimary }]}>
+                      Backend Vercel / API URL
+                    </Text>
+                    <Text style={[styles.linkSubText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {project.backend_url || 'Not configured'}
+                    </Text>
+                  </View>
+                  {project.backend_url ? (
+                    <Button
+                      title="Launch"
+                      onPress={() => Linking.openURL(project.backend_url!)}
+                      variant="outline"
+                      size="sm"
+                    />
+                  ) : (
+                    <Badge label="UNSET" variant="neutral" size="sm" />
+                  )}
+                </View>
+
+                {/* Supabase Dashboard / DB Link */}
+                <View style={styles.linkRow}>
+                  <Ionicons name="flash-outline" size={18} color={colors.statusHealthy} />
+                  <View style={styles.linkTextCol}>
+                    <Text style={[styles.linkLabel, { color: colors.textPrimary }]}>
+                      Supabase Cloud DB
+                    </Text>
+                    <Text style={[styles.linkSubText, { color: colors.textSecondary }]} numberOfLines={1}>
+                      {project.supabase_url || 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz'}
+                    </Text>
+                  </View>
+                  <Button
+                    title="Console"
+                    onPress={() =>
+                      Linking.openURL(
+                        project.supabase_url || 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz'
+                      )
+                    }
+                    variant="ghost"
+                    size="sm"
+                  />
+                </View>
+              </View>
+            </Card>
+
             {/* Timeline & Metadata Card */}
             <Card style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
@@ -519,6 +600,28 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     padding: Spacing[4],
+  },
+  linksGrid: {
+    gap: Spacing[3],
+  },
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing[3],
+    paddingVertical: 2,
+  },
+  linkTextCol: {
+    flex: 1,
+  },
+  linkLabel: {
+    fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    fontFamily: Typography.fontFamily.sans,
+  },
+  linkSubText: {
+    fontSize: 11,
+    fontFamily: Typography.fontFamily.sans,
+    marginTop: 2,
   },
   sectionHeader: {
     flexDirection: 'row',

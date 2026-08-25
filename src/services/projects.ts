@@ -31,45 +31,48 @@ export interface DashboardStats {
   needsAttention: number;
 }
 
-// Initial Mock Projects Data for preview / offline fallback
+// User's Real Projects Data
 const FALLBACK_PROJECTS: ProjectWithDetails[] = [
   {
-    id: 'demo-1',
+    id: 'proj-1',
     user_id: 'dev-user',
-    name: 'AI Study Assistant',
-    description: 'Personal study assistant with document RAG and quiz engine.',
+    name: 'App_Wallet',
+    description: 'Personal Developer Command Center for projects, repos & deployments.',
     status: 'active',
-    priority: 'high',
-    progress: 82,
-    start_date: '2026-07-01',
-    target_date: '2026-09-15',
-    tags: ['React', 'FastAPI', 'Supabase', 'OpenAI'],
+    priority: 'critical',
+    progress: 100,
+    start_date: '2026-08-24',
+    target_date: '2026-09-30',
+    tags: ['TypeScript', 'Expo Router', 'Supabase', 'Vercel'],
     health_status: 'healthy',
-    health_reasons: ['Last commit was 2 hours ago', 'Production deployment is READY'],
-    last_activity_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+    health_reasons: ['Active development in progress', 'Vercel deployment is READY'],
+    last_activity_at: new Date().toISOString(),
+    frontend_url: 'https://app-wallet-betrk176b-minkoi007cs-projects.vercel.app',
+    backend_url: 'https://ymunwzjmemxifjxsiugz.supabase.co/functions/v1',
+    supabase_url: 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz',
     metadata: {},
-    created_at: new Date(Date.now() - 30 * 86400 * 1000).toISOString(),
+    created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
     repositories: [
       {
-        id: 'repo-1',
-        project_id: 'demo-1',
+        id: 'repo-app-wallet',
+        project_id: 'proj-1',
         provider: 'github',
-        external_id: '101',
-        owner: 'khoihoang',
-        name: 'ai-study-frontend',
-        url: 'https://github.com/khoihoang/ai-study-frontend',
+        external_id: 'gh-app-wallet',
+        owner: 'minkoi007cs',
+        name: 'App_Wallet',
+        url: 'https://github.com/minkoi007cs/App_Wallet',
         role: 'frontend',
         default_branch: 'main',
         visibility: 'public',
         primary_language: 'TypeScript',
-        stars_count: 14,
-        forks_count: 2,
-        open_issues_count: 1,
-        latest_commit_sha: 'a8f7c9e',
-        latest_commit_message: 'feat(rag): optimized vector search similarity threshold',
+        stars_count: 5,
+        forks_count: 0,
+        open_issues_count: 0,
+        latest_commit_sha: '6fef633',
+        latest_commit_message: 'feat: add real GitHub REST API integration',
         latest_commit_author: 'Khoi Hoang',
-        latest_commit_date: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
+        latest_commit_date: new Date().toISOString(),
         metadata: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -77,40 +80,90 @@ const FALLBACK_PROJECTS: ProjectWithDetails[] = [
     ],
   },
   {
-    id: 'demo-2',
+    id: 'proj-2',
     user_id: 'dev-user',
-    name: 'Subject Manager',
-    description: 'Curriculum and course planning tool for university students.',
+    name: 'lifedashboard',
+    description: 'Personal life management dashboard and daily tracking system.',
     status: 'active',
-    priority: 'medium',
-    progress: 65,
-    start_date: '2026-06-10',
-    target_date: '2026-10-01',
-    tags: ['Expo', 'React Native', 'TypeScript'],
-    health_status: 'needs_attention',
-    health_reasons: ['No GitHub commit for 18 days', '2 tasks are overdue'],
-    last_activity_at: new Date(Date.now() - 18 * 86400 * 1000).toISOString(),
+    priority: 'high',
+    progress: 75,
+    start_date: '2026-06-01',
+    target_date: '2026-10-31',
+    tags: ['TypeScript', 'React', 'Tailwind'],
+    health_status: 'healthy',
+    health_reasons: ['Active commits recorded'],
+    last_activity_at: new Date(Date.now() - 86400 * 1000).toISOString(),
+    frontend_url: 'https://lifedashboard.vercel.app',
+    backend_url: '',
+    supabase_url: 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz',
     metadata: {},
     created_at: new Date(Date.now() - 60 * 86400 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
     repositories: [],
   },
   {
-    id: 'demo-3',
+    id: 'proj-3',
     user_id: 'dev-user',
-    name: 'App Wallet',
-    description: 'Personal Developer Command Center for projects, repos & deployments.',
+    name: 'fitmatch_AI',
+    description: 'AI-powered fitness match & workout algorithm platform.',
     status: 'active',
-    priority: 'critical',
-    progress: 40,
-    start_date: '2026-08-24',
-    target_date: '2026-09-30',
-    tags: ['Expo Router', 'Supabase', 'PostgreSQL', 'TypeScript'],
+    priority: 'high',
+    progress: 60,
+    start_date: '2026-05-15',
+    target_date: '2026-11-15',
+    tags: ['Python', 'FastAPI', 'AI'],
     health_status: 'healthy',
-    health_reasons: ['Active development in progress'],
-    last_activity_at: new Date().toISOString(),
+    health_reasons: ['AI model training pipeline running'],
+    last_activity_at: new Date(Date.now() - 2 * 86400 * 1000).toISOString(),
+    frontend_url: 'https://fitmatch-ai.vercel.app',
+    backend_url: 'https://api.fitmatch.internal',
+    supabase_url: '',
     metadata: {},
-    created_at: new Date().toISOString(),
+    created_at: new Date(Date.now() - 90 * 86400 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+    repositories: [],
+  },
+  {
+    id: 'proj-4',
+    user_id: 'dev-user',
+    name: 'TokenWallet',
+    description: 'Collab project with johnnyhoang — Web3 & crypto token wallet manager.',
+    status: 'active',
+    priority: 'medium',
+    progress: 50,
+    start_date: '2026-04-01',
+    target_date: '2026-12-01',
+    tags: ['TypeScript', 'Web3', 'Ethers'],
+    health_status: 'healthy',
+    health_reasons: ['Collaborator repo linked'],
+    last_activity_at: new Date(Date.now() - 3 * 86400 * 1000).toISOString(),
+    frontend_url: 'https://token-wallet.vercel.app',
+    backend_url: '',
+    supabase_url: '',
+    metadata: {},
+    created_at: new Date(Date.now() - 120 * 86400 * 1000).toISOString(),
+    updated_at: new Date().toISOString(),
+    repositories: [],
+  },
+  {
+    id: 'proj-5',
+    user_id: 'dev-user',
+    name: 'Canvas_AI',
+    description: 'AI generative canvas and design workspace.',
+    status: 'active',
+    priority: 'high',
+    progress: 85,
+    start_date: '2026-03-01',
+    target_date: '2026-09-30',
+    tags: ['Python', 'PyTorch', 'Canvas'],
+    health_status: 'healthy',
+    health_reasons: ['6 stars on GitHub'],
+    last_activity_at: new Date(Date.now() - 4 * 86400 * 1000).toISOString(),
+    frontend_url: 'https://canvas-ai.vercel.app',
+    backend_url: 'https://backend-canvas.vercel.app',
+    supabase_url: 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz',
+    metadata: {},
+    created_at: new Date(Date.now() - 150 * 86400 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
     repositories: [],
   },
@@ -139,39 +192,38 @@ export async function fetchProjects(filters: ProjectFilterOptions = {}): Promise
       query = query.order(sortBy, { ascending: sortOrder === 'asc' });
 
       const { data, error } = await query;
-      if (!error && data && data.length > 0) {
-        let results = data as ProjectWithDetails[];
+      if (!error && data) {
+        let result = data as ProjectWithDetails[];
         if (filters.searchQuery) {
           const q = filters.searchQuery.toLowerCase();
-          results = results.filter(
+          result = result.filter(
             (p) =>
               p.name.toLowerCase().includes(q) ||
               (p.description && p.description.toLowerCase().includes(q)) ||
               p.tags.some((t) => t.toLowerCase().includes(q))
           );
         }
-        return results;
+        return result;
       }
     }
   } catch (err) {
-    console.warn('Supabase fetch query notice:', err);
+    console.warn('fetchProjects notice:', err);
   }
 
-  // Fallback / Preview local store filter
-  let results = [...localProjectsStore];
-
+  // Filter in memory for local fallback
+  let result = [...localProjectsStore];
   if (filters.status && filters.status !== 'all') {
-    results = results.filter((p) => p.status === filters.status);
+    result = result.filter((p) => p.status === filters.status);
   }
   if (filters.priority && filters.priority !== 'all') {
-    results = results.filter((p) => p.priority === filters.priority);
+    result = result.filter((p) => p.priority === filters.priority);
   }
   if (filters.healthStatus && filters.healthStatus !== 'all') {
-    results = results.filter((p) => p.health_status === filters.healthStatus);
+    result = result.filter((p) => p.health_status === filters.healthStatus);
   }
   if (filters.searchQuery) {
     const q = filters.searchQuery.toLowerCase();
-    results = results.filter(
+    result = result.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
         (p.description && p.description.toLowerCase().includes(q)) ||
@@ -179,7 +231,7 @@ export async function fetchProjects(filters: ProjectFilterOptions = {}): Promise
     );
   }
 
-  return results;
+  return result;
 }
 
 export async function fetchProjectById(id: string): Promise<ProjectWithDetails | null> {
@@ -190,23 +242,21 @@ export async function fetchProjectById(id: string): Promise<ProjectWithDetails |
         .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
         .eq('id', id)
         .single();
-
-      if (!error && data) {
-        return data as ProjectWithDetails;
-      }
+      if (!error && data) return data as ProjectWithDetails;
     }
   } catch (err) {
-    console.warn('Supabase fetchProjectById notice:', err);
+    console.warn('fetchProjectById notice:', err);
   }
 
-  return localProjectsStore.find((p) => p.id === id) || null;
+  const found = localProjectsStore.find((p) => p.id === id);
+  return found || null;
 }
 
 export async function createProject(input: CreateProjectInput): Promise<ProjectWithDetails> {
   const { data: session } = await supabase.auth.getSession();
   const userId = session?.session?.user?.id || 'dev-user';
 
-  const newProjectPayload: ProjectInsert = {
+  const payload: ProjectInsert = {
     user_id: userId,
     name: input.name,
     description: input.description || null,
@@ -215,40 +265,43 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectW
     progress: input.progress,
     start_date: input.start_date || null,
     target_date: input.target_date || null,
-    tags: input.tags || [],
+    tags: input.tags,
     health_status: 'healthy',
-    health_reasons: ['Project newly initialized'],
+    health_reasons: ['Project created'],
     last_activity_at: new Date().toISOString(),
+    frontend_url: input.frontend_url || null,
+    backend_url: input.backend_url || null,
+    supabase_url: input.supabase_url || null,
     metadata: {},
   };
 
   if (session?.session?.user) {
     const { data, error } = await (supabase.from('projects') as any)
-      .insert(newProjectPayload)
-      .select()
+      .insert(payload)
+      .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
       .single();
 
-    if (!error && data) {
-      return data as ProjectWithDetails;
-    }
+    if (error) throw error;
+    return data as ProjectWithDetails;
   }
 
-  // Local fallback insert
   const created: ProjectWithDetails = {
-    ...newProjectPayload,
+    ...payload,
     id: `proj-${Date.now()}`,
     user_id: userId,
-    name: input.name,
     description: input.description || null,
     status: input.status,
     priority: input.priority,
     progress: input.progress,
     start_date: input.start_date || null,
     target_date: input.target_date || null,
-    tags: input.tags || [],
+    tags: input.tags,
     health_status: 'healthy',
-    health_reasons: ['Project newly initialized'],
+    health_reasons: ['Project created'],
     last_activity_at: new Date().toISOString(),
+    frontend_url: input.frontend_url || null,
+    backend_url: input.backend_url || null,
+    supabase_url: input.supabase_url || null,
     metadata: {},
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -260,41 +313,35 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectW
   return created;
 }
 
-export async function updateProject(
-  id: string,
-  updates: Partial<CreateProjectInput> & { health_status?: HealthState; health_reasons?: string[] }
-): Promise<ProjectWithDetails> {
+export async function updateProject(id: string, updates: Partial<ProjectRow> | Partial<CreateProjectInput>): Promise<ProjectWithDetails> {
   const { data: session } = await supabase.auth.getSession();
-
-  const payload: ProjectUpdate = {
-    ...updates,
-    last_activity_at: new Date().toISOString(),
-  };
 
   if (session?.session?.user) {
     const { data, error } = await (supabase.from('projects') as any)
-      .update(payload)
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString(),
+      })
       .eq('id', id)
-      .select()
+      .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
       .single();
 
-    if (!error && data) {
-      return data as ProjectWithDetails;
-    }
+    if (error) throw error;
+    return data as ProjectWithDetails;
   }
 
-  // Local fallback update
-  const index = localProjectsStore.findIndex((p) => p.id === id);
-  if (index !== -1) {
-    localProjectsStore[index] = {
-      ...localProjectsStore[index],
-      ...payload,
-      updated_at: new Date().toISOString(),
-    };
-    return localProjectsStore[index];
-  }
+  const idx = localProjectsStore.findIndex((p) => p.id === id);
+  if (idx === -1) throw new Error('Project not found.');
 
-  throw new Error(`Project ${id} not found.`);
+  localProjectsStore[idx] = {
+    ...localProjectsStore[idx],
+    ...updates,
+    updated_at: new Date().toISOString(),
+    last_activity_at: new Date().toISOString(),
+  };
+
+  return localProjectsStore[idx];
 }
 
 export async function deleteProject(id: string): Promise<void> {
@@ -316,6 +363,6 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     paused: projects.filter((p) => p.status === 'paused').length,
     completed: projects.filter((p) => p.status === 'completed').length,
     ideas: projects.filter((p) => p.status === 'idea').length,
-    needsAttention: projects.filter((p) => p.health_status !== 'healthy').length,
+    needsAttention: projects.filter((p) => p.health_status === 'needs_attention' || p.health_status === 'critical').length,
   };
 }

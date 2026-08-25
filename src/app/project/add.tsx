@@ -45,6 +45,9 @@ export default function AddProjectScreen() {
   const [startDate, setStartDate] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [frontendUrl, setFrontendUrl] = useState('');
+  const [backendUrl, setBackendUrl] = useState('');
+  const [supabaseUrl, setSupabaseUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
@@ -65,6 +68,9 @@ export default function AddProjectScreen() {
       start_date: startDate || undefined,
       target_date: targetDate || undefined,
       tags,
+      frontend_url: frontendUrl.trim() || undefined,
+      backend_url: backendUrl.trim() || undefined,
+      supabase_url: supabaseUrl.trim() || undefined,
     };
 
     const validation = validateProjectInput(inputData);
@@ -239,6 +245,31 @@ export default function AddProjectScreen() {
             value={tagsInput}
             onChangeText={setTagsInput}
             leftIcon={<Ionicons name="pricetags-outline" size={18} color={colors.textMuted} />}
+          />
+
+          {/* Deployment Links */}
+          <TextInput
+            label="Frontend Vercel URL"
+            placeholder="https://my-app.vercel.app"
+            value={frontendUrl}
+            onChangeText={setFrontendUrl}
+            leftIcon={<Ionicons name="globe-outline" size={18} color={colors.textMuted} />}
+          />
+
+          <TextInput
+            label="Backend Vercel / API URL"
+            placeholder="https://api.my-app.com"
+            value={backendUrl}
+            onChangeText={setBackendUrl}
+            leftIcon={<Ionicons name="server-outline" size={18} color={colors.textMuted} />}
+          />
+
+          <TextInput
+            label="Supabase Cloud DB URL"
+            placeholder="https://supabase.com/dashboard/project/..."
+            value={supabaseUrl}
+            onChangeText={setSupabaseUrl}
+            leftIcon={<Ionicons name="flash-outline" size={18} color={colors.textMuted} />}
           />
 
           {/* Submit Action */}

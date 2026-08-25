@@ -58,6 +58,9 @@ export interface Database {
           health_status: HealthState;
           health_reasons: string[];
           last_activity_at: string;
+          frontend_url?: string | null;
+          backend_url?: string | null;
+          supabase_url?: string | null;
           metadata: Json;
           created_at: string;
           updated_at: string;
@@ -76,6 +79,9 @@ export interface Database {
           health_status?: HealthState;
           health_reasons?: string[];
           last_activity_at?: string;
+          frontend_url?: string | null;
+          backend_url?: string | null;
+          supabase_url?: string | null;
           metadata?: Json;
           created_at?: string;
           updated_at?: string;
