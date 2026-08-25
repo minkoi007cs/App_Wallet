@@ -1,4 +1,4 @@
-import { ProjectPriority, ProjectStatus } from '@/types/database';
+import { ProjectPriority, ProjectStatus } from '../../types/database';
 
 export interface CreateProjectInput {
   name: string;

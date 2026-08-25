@@ -79,6 +79,8 @@ export const Badge: React.FC<BadgeProps> = ({
         { backgroundColor: badgeColors.bg },
         style,
       ]}
+      accessibilityRole="text"
+      accessibilityLabel={`Badge: ${label}`}
     >
       {dot && (
         <View

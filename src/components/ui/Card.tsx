@@ -43,6 +43,7 @@ export const Card: React.FC<CardProps> = ({
       <TouchableOpacity
         activeOpacity={0.7}
         onPress={onPress}
+        accessibilityRole="button"
         style={cardStyle}
       >
         {children}
@@ -50,7 +51,11 @@ export const Card: React.FC<CardProps> = ({
     );
   }
 
-  return <View style={cardStyle}>{children}</View>;
+  return (
+    <View style={cardStyle} accessibilityRole="summary">
+      {children}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({

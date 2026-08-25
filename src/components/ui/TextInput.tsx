@@ -49,6 +49,7 @@ export const TextInput: React.FC<TextInputProps> = ({
         {leftIcon && <View style={styles.iconLeft}>{leftIcon}</View>}
         <RNTextInput
           placeholderTextColor={colors.textMuted}
+          accessibilityLabel={label || props.placeholder || 'Text input'}
           style={[
             styles.input,
             { color: colors.textPrimary },

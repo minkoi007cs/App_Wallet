@@ -1,8 +1,5 @@
-import { HealthState } from '@/types/database';
-import { ProjectWithDetails, fetchProjectById, updateProject } from '@/services/projects';
-import { fetchTasksByProject } from '@/services/tasks';
-import { fetchProjectRepositories } from '@/services/github';
-import { fetchProjectIntegrations } from '@/services/vercel';
+import { HealthState } from '../types/database';
+import type { ProjectWithDetails } from './projects';
 
 export interface HealthDiagnosticResult {
   health_status: HealthState;
@@ -91,6 +88,11 @@ export function computeProjectHealth(
 }
 
 export async function evaluateAndSaveProjectHealth(projectId: string): Promise<HealthDiagnosticResult> {
+  const { fetchProjectById, updateProject } = await import('./projects');
+  const { fetchTasksByProject } = await import('./tasks');
+  const { fetchProjectRepositories } = await import('./github');
+  const { fetchProjectIntegrations } = await import('./vercel');
+
   const project = await fetchProjectById(projectId);
   if (!project) {
     throw new Error(`Project ${projectId} not found for health evaluation.`);
