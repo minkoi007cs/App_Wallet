@@ -24,6 +24,9 @@ import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
 import { LinkVercelModal } from '@/components/modals/LinkVercelModal';
 import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
 import { AIAgentPromptModal } from '@/components/modals/AIAgentPromptModal';
+import { checkSupabaseHealth, SupabaseHealthResult, getSupabaseDashboardUrl } from '@/services/supabaseStatus';
+import { autoDetectAndSaveProjectUrls } from '@/services/urlDetector';
+import { showToast } from '@/components/ui/Toast';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -47,6 +50,58 @@ export default function ProjectDetailScreen() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showVercelModal, setShowVercelModal] = useState(false);
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
+  const [supabaseHealth, setSupabaseHealth] = useState<SupabaseHealthResult | null>(null);
+  const [checkingDb, setCheckingDb] = useState(false);
+  const [autoDetecting, setAutoDetecting] = useState(false);
+
+  const checkDbHealth = React.useCallback(async () => {
+    if (!project?.supabase_url) {
+      setSupabaseHealth(null);
+      return;
+    }
+    setCheckingDb(true);
+    try {
+      const result = await checkSupabaseHealth(project.supabase_url);
+      setSupabaseHealth(result);
+    } finally {
+      setCheckingDb(false);
+    }
+  }, [project?.supabase_url]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    if (project?.supabase_url) {
+      checkSupabaseHealth(project.supabase_url).then((result) => {
+        if (isMounted) {
+          setSupabaseHealth(result);
+        }
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [project?.supabase_url]);
+
+  const handleAutoDetectUrls = async () => {
+    setAutoDetecting(true);
+    try {
+      await autoDetectAndSaveProjectUrls(projectId);
+      await reload();
+      showToast({
+        type: 'success',
+        title: 'URLs Synchronized',
+        message: 'Deployment & Supabase URLs auto-detected and updated!',
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Auto-detect Failed',
+        message: err.message || 'Could not auto-detect URLs.',
+      });
+    } finally {
+      setAutoDetecting(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -244,11 +299,20 @@ export default function ProjectDetailScreen() {
 
             {/* Deployment & Service Links Card */}
             <Card style={styles.sectionCard}>
-              <View style={styles.sectionHeader}>
-                <Ionicons name="link-outline" size={18} color={colors.brand} />
-                <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
-                  Deployment & Service Links
-                </Text>
+              <View style={[styles.sectionHeader, { justifyContent: 'space-between', alignItems: 'center' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Ionicons name="link-outline" size={18} color={colors.brand} />
+                  <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>
+                    Deployment & Service Links
+                  </Text>
+                </View>
+                <Button
+                  title={autoDetecting ? 'Detecting...' : 'Auto-Detect URLs'}
+                  onPress={handleAutoDetectUrls}
+                  loading={autoDetecting}
+                  variant="outline"
+                  size="sm"
+                />
               </View>
 
               <View style={styles.linksGrid}>
@@ -300,26 +364,94 @@ export default function ProjectDetailScreen() {
 
                 {/* Supabase Dashboard / DB Link */}
                 <View style={styles.linkRow}>
-                  <Ionicons name="flash-outline" size={18} color={colors.statusHealthy} />
+                  <Ionicons name="flash-outline" size={18} color={colors.brand} />
                   <View style={styles.linkTextCol}>
-                    <Text style={[styles.linkLabel, { color: colors.textPrimary }]}>
-                      Supabase Cloud DB
-                    </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Text style={[styles.linkLabel, { color: colors.textPrimary }]}>
+                        Supabase Cloud DB
+                      </Text>
+                      {project.supabase_url && (
+                        <Badge
+                          label={
+                            checkingDb
+                              ? 'CHECKING...'
+                              : supabaseHealth?.status === 'active'
+                              ? `ACTIVE (${supabaseHealth.latencyMs || 0}ms)`
+                              : supabaseHealth?.status === 'paused'
+                              ? 'PAUSED'
+                              : 'UNREACHABLE'
+                          }
+                          variant={
+                            checkingDb
+                              ? 'neutral'
+                              : supabaseHealth?.status === 'active'
+                              ? 'healthy'
+                              : supabaseHealth?.status === 'paused'
+                              ? 'critical'
+                              : 'warning'
+                          }
+                          size="sm"
+                        />
+                      )}
+                    </View>
                     <Text style={[styles.linkSubText, { color: colors.textSecondary }]} numberOfLines={1}>
                       {project.supabase_url || 'Not configured'}
                     </Text>
                   </View>
-                  {project.supabase_url ? (
-                    <Button
-                      title="Console"
-                      onPress={() => Linking.openURL(project.supabase_url!)}
-                      variant="ghost"
-                      size="sm"
-                    />
-                  ) : (
-                    <Badge label="UNSET" variant="neutral" size="sm" />
-                  )}
+                  <View style={{ flexDirection: 'row', gap: 6 }}>
+                    {project.supabase_url && (
+                      <TouchableOpacity
+                        onPress={checkDbHealth}
+                        style={{ padding: 6, justifyContent: 'center' }}
+                      >
+                        <Ionicons name="refresh-outline" size={16} color={colors.textSecondary} />
+                      </TouchableOpacity>
+                    )}
+                    {project.supabase_url ? (
+                      <Button
+                        title="Console"
+                        onPress={() =>
+                          Linking.openURL(
+                            supabaseHealth?.dashboardUrl ||
+                              getSupabaseDashboardUrl(project.supabase_url) ||
+                              project.supabase_url!
+                          )
+                        }
+                        variant={supabaseHealth?.status === 'paused' ? 'primary' : 'ghost'}
+                        size="sm"
+                      />
+                    ) : (
+                      <Badge label="UNSET" variant="neutral" size="sm" />
+                    )}
+                  </View>
                 </View>
+
+                {/* Supabase Pause Alert Banner if paused */}
+                {supabaseHealth?.status === 'paused' && (
+                  <View
+                    style={{
+                      backgroundColor: colors.statusCritical + '15',
+                      borderColor: colors.statusCritical + '40',
+                      borderWidth: 1,
+                      borderRadius: Radius.md,
+                      padding: Spacing[3],
+                      marginTop: Spacing[2],
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                    }}
+                  >
+                    <Ionicons name="warning-outline" size={20} color={colors.statusCritical} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: colors.statusCritical, fontWeight: '700', fontSize: 13 }}>
+                        Database is PAUSED (Free-tier Inactivity)
+                      </Text>
+                      <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>
+                        Free tier Supabase projects pause after 7 days without queries. Click &apos;Console&apos; to unpause.
+                      </Text>
+                    </View>
+                  </View>
+                )}
               </View>
             </Card>
 
