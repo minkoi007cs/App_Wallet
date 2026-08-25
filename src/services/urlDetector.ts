@@ -1,6 +1,7 @@
 import { fetchProjectById, updateProject, ProjectWithDetails } from './projects';
-import { fetchProjectRepositories, GitHubRepoItem } from './github';
-import { fetchProjectIntegrations, fetchAvailableVercelProjects, IntegrationRow } from './vercel';
+import { fetchProjectRepositories, GitHubRepoItem, getGitHubConfig } from './github';
+import { fetchProjectIntegrations, fetchAvailableVercelProjects, IntegrationRow, VercelProjectItem } from './vercel';
+import { extractSupabaseRef } from './supabaseStatus';
 
 export interface DetectedUrlsResult {
   frontend_url?: string;
@@ -28,13 +29,96 @@ function cleanUrl(url?: string | null): string | undefined {
 }
 
 /**
+ * Probes GitHub repository files to find real Supabase configuration & URLs
+ */
+export async function scanRepoForSupabaseUrl(owner: string, repo: string): Promise<{ url?: string; source?: string } | null> {
+  const candidateFiles = [
+    'backend/.env.example',
+    '.env.example',
+    'frontend/.env.example',
+    '.env.local.example',
+    'supabase/config.toml',
+    'src/lib/supabase/client.ts',
+    'src/lib/supabase.ts',
+    'src/supabase.ts',
+    'lib/supabase.ts',
+    'README.md',
+  ];
+
+  const config = getGitHubConfig();
+  const headers: Record<string, string> = {
+    Accept: 'application/vnd.github.v3+json',
+    'User-Agent': 'App-Wallet-Client',
+  };
+  if (config.token) {
+    headers.Authorization = config.token.startsWith('Bearer ') || config.token.startsWith('token ')
+      ? config.token
+      : `Bearer ${config.token}`;
+  }
+
+  for (const filePath of candidateFiles) {
+    try {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`, { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.content && data.encoding === 'base64') {
+          // Decode base64 content
+          const decoded = typeof atob === 'function'
+            ? atob(data.content.replace(/\s/g, ''))
+            : Buffer.from(data.content, 'base64').toString('utf8');
+
+          // Regex 1: https://<ref>.supabase.co
+          const matchUrl = decoded.match(/https:\/\/([a-z0-9_-]+)\.supabase\.co/i);
+          if (matchUrl && matchUrl[1]) {
+            const ref = extractSupabaseRef(matchUrl[0]);
+            if (ref) {
+              return {
+                url: `https://${ref}.supabase.co`,
+                source: `GitHub Repo (${filePath})`,
+              };
+            }
+          }
+
+          // Regex 2: postgresql://postgres.<ref>:... or project_id = "..."
+          const matchPostgres = decoded.match(/postgres\.([a-z0-9_-]+):/i);
+          if (matchPostgres && matchPostgres[1]) {
+            const ref = extractSupabaseRef(matchPostgres[1]);
+            if (ref) {
+              return {
+                url: `https://${ref}.supabase.co`,
+                source: `GitHub Repo (${filePath})`,
+              };
+            }
+          }
+
+          const matchProjectId = decoded.match(/project_id\s*=\s*["']([a-z0-9_-]+)["']/i);
+          if (matchProjectId && matchProjectId[1]) {
+            const ref = extractSupabaseRef(matchProjectId[1]);
+            if (ref) {
+              return {
+                url: `https://${ref}.supabase.co`,
+                source: `GitHub Repo (${filePath})`,
+              };
+            }
+          }
+        }
+      }
+    } catch {
+      // Continue checking next candidate file
+    }
+  }
+
+  return null;
+}
+
+/**
  * Auto-detects frontend, backend, and Supabase URLs from repo items and integrations
  */
 export function detectUrlsFromMetadata(
   projectName: string,
   repos: (any | GitHubRepoItem)[] = [],
   integrations: IntegrationRow[] = [],
-  availableVercelProjects: { name: string; production_url: string }[] = []
+  availableVercelProjects: VercelProjectItem[] = []
 ): DetectedUrlsResult {
   let frontend_url: string | undefined;
   let backend_url: string | undefined;
@@ -44,7 +128,7 @@ export function detectUrlsFromMetadata(
 
   const cleanProjectName = projectName.toLowerCase().replace(/[-_]/g, '');
 
-  // 1. Check existing Vercel integrations
+  // 1. Check existing Vercel integrations linked to this project
   for (const integration of integrations) {
     if (integration.provider === 'vercel' && integration.production_url) {
       const url = cleanUrl(integration.production_url);
@@ -52,23 +136,47 @@ export function detectUrlsFromMetadata(
       if (name.includes('backend') || name.includes('api') || name.includes('server')) {
         if (!backend_url) {
           backend_url = url;
-          sources.backend = `Vercel Integration (${integration.name})`;
+          sources.backend = `Linked Vercel Integration (${integration.name})`;
         }
       } else {
         if (!frontend_url) {
           frontend_url = url;
-          sources.frontend = `Vercel Integration (${integration.name})`;
+          sources.frontend = `Linked Vercel Integration (${integration.name})`;
         }
       }
     }
   }
 
-  // 2. Check available Vercel projects matching name
-  if (!frontend_url && availableVercelProjects.length > 0) {
+  // 2. Check available Vercel projects (exact Git repo link or name matching)
+  if (availableVercelProjects.length > 0) {
+    // 2a. Match by connected GitHub repo
+    for (const repo of repos) {
+      const repoNameClean = (repo.name || '').toLowerCase().replace(/[-_]/g, '');
+      for (const vp of availableVercelProjects) {
+        const vpRepoClean = (vp.gitRepo || '').toLowerCase().replace(/[-_]/g, '');
+        if (vpRepoClean && (vpRepoClean === repoNameClean || vpRepoClean.includes(repoNameClean))) {
+          const vpName = vp.name.toLowerCase();
+          if (vpName.includes('backend') || vpName.includes('api') || vpName.includes('server')) {
+            if (!backend_url) {
+              backend_url = cleanUrl(vp.production_url);
+              sources.backend = `Vercel Git Link (${vp.name})`;
+            }
+          } else {
+            if (!frontend_url) {
+              frontend_url = cleanUrl(vp.production_url);
+              sources.frontend = `Vercel Git Link (${vp.name})`;
+            }
+          }
+        }
+      }
+    }
+
+    // 2b. Match by Vercel project name similarity
     for (const vp of availableVercelProjects) {
       const cleanVpName = vp.name.toLowerCase().replace(/[-_]/g, '');
       if (cleanVpName === cleanProjectName || cleanVpName.includes(cleanProjectName) || cleanProjectName.includes(cleanVpName)) {
-        if (vp.name.toLowerCase().includes('backend') || vp.name.toLowerCase().includes('api')) {
+        const vpName = vp.name.toLowerCase();
+        if (vpName.includes('backend') || vpName.includes('api') || vpName.includes('server')) {
           if (!backend_url) {
             backend_url = cleanUrl(vp.production_url);
             sources.backend = `Vercel Project Match (${vp.name})`;
@@ -85,30 +193,24 @@ export function detectUrlsFromMetadata(
 
   // 3. Check GitHub Repositories metadata (homepage or common vercel domains)
   for (const repo of repos) {
-    // If repo has a homepage URL on GitHub
     const homepage = cleanUrl((repo as any)?.homepage);
-    if (homepage) {
-      if (!frontend_url) {
-        frontend_url = homepage;
-        sources.frontend = `GitHub Repo Homepage (${repo.name})`;
-      }
+    if (homepage && !frontend_url) {
+      frontend_url = homepage;
+      sources.frontend = `GitHub Repo Homepage (${repo.name})`;
     }
 
-    // Check repo name heuristics
     const repoName = (repo.name || '').toLowerCase();
     if (repoName.includes('backend') || repoName.includes('server') || repoName.includes('api')) {
       if (!backend_url && !sources.backend) {
-        // e.g. https://<reponame>.vercel.app or similar
         backend_url = `https://${repo.name.toLowerCase().replace(/_/g, '-')}.vercel.app`;
         sources.backend = `Heuristic (${repo.name}.vercel.app)`;
       }
     }
   }
 
-  // 4. Fallback heuristic for frontend if still missing: https://<name>.vercel.app
+  // 4. Default Vercel domain pattern if still missing
   if (!frontend_url) {
-    const defaultVercel = `https://${projectName.toLowerCase().replace(/_/g, '-')}.vercel.app`;
-    frontend_url = defaultVercel;
+    frontend_url = `https://${projectName.toLowerCase().replace(/_/g, '-')}.vercel.app`;
     sources.frontend = 'Default Vercel domain pattern';
   }
 
@@ -122,7 +224,8 @@ export function detectUrlsFromMetadata(
 }
 
 /**
- * Scans a project, auto-detects URLs, and saves changes directly to Supabase
+ * Scans a project, auto-detects URLs (including scanning GitHub repo files for Supabase),
+ * and saves changes directly to Supabase
  */
 export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<ProjectWithDetails> {
   const project = await fetchProjectById(projectId);
@@ -133,6 +236,20 @@ export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<P
   const vercelProjects = await fetchAvailableVercelProjects().catch(() => []);
 
   const detected = detectUrlsFromMetadata(project.name, repos, integrations, vercelProjects);
+
+  // Deep scan GitHub repos for Supabase URL if not set
+  if (!project.supabase_url) {
+    for (const repo of repos) {
+      if (repo.owner && repo.name) {
+        const found = await scanRepoForSupabaseUrl(repo.owner, repo.name);
+        if (found?.url) {
+          detected.supabase_url = found.url;
+          detected.sources.supabase = found.source;
+          break;
+        }
+      }
+    }
+  }
 
   const updates: Record<string, string | null> = {};
   if (detected.frontend_url && (!project.frontend_url || project.frontend_url !== detected.frontend_url)) {

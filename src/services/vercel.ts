@@ -7,7 +7,10 @@ export interface VercelProjectItem {
   id: string;
   name: string;
   production_url: string;
-  framework: string;
+  framework?: string;
+  gitRepo?: string;
+  gitOwner?: string;
+  updatedAt?: number;
 }
 
 export interface LinkVercelInput {
@@ -16,6 +19,70 @@ export interface LinkVercelInput {
   production_url: string;
   latest_deployment_url?: string;
   latest_deployment_status?: string;
+}
+
+// ──────────────── VERCEL CREDENTIALS (persisted in localStorage) ────────────────
+
+const VERCEL_STORAGE_KEY = 'app_wallet_vercel_config';
+let activeVercelToken: string | null = null;
+
+export async function configureVercelCredentials(config: { token?: string }) {
+  if (config.token !== undefined) {
+    activeVercelToken = config.token.trim() || null;
+  }
+
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(
+        VERCEL_STORAGE_KEY,
+        JSON.stringify({ token: activeVercelToken })
+      );
+    } catch {
+      // Non-critical local storage fallback
+    }
+  }
+}
+
+export function getVercelConfig() {
+  if (!activeVercelToken && typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = window.localStorage.getItem(VERCEL_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.token) activeVercelToken = parsed.token;
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  return {
+    token: activeVercelToken,
+  };
+}
+
+export async function getVercelConnectionStatus(): Promise<{
+  isConnected: boolean;
+  username?: string;
+}> {
+  const config = getVercelConfig();
+  if (!config.token) return { isConnected: false };
+
+  try {
+    const res = await fetch('https://api.vercel.com/v2/user', {
+      headers: {
+        Authorization: `Bearer ${config.token}`,
+      },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return { isConnected: true, username: data.user?.username || data.user?.email || 'Vercel User' };
+    }
+  } catch {
+    // Network error or invalid token
+  }
+
+  return { isConnected: false };
 }
 
 // ──────────────── HELPERS ────────────────
@@ -41,21 +108,72 @@ export async function fetchProjectIntegrations(projectId: string): Promise<Integ
 export async function fetchAvailableVercelProjects(): Promise<VercelProjectItem[]> {
   await requireAuth();
 
-  const { data, error } = await supabase.functions.invoke('vercel-sync', {
-    body: { action: 'list_projects' },
-  });
+  const config = getVercelConfig();
 
-  if (error) throw error;
-  if (!data?.projects) return [];
+  // 1. Direct Vercel REST API if token is configured
+  if (config.token) {
+    try {
+      const res = await fetch('https://api.vercel.com/v9/projects?limit=100', {
+        headers: {
+          Authorization: `Bearer ${config.token}`,
+        },
+      });
 
-  return data.projects.map((p: any) => ({
-    id: p.id,
-    name: p.name,
-    production_url: p.targets?.production?.url
-      ? `https://${p.targets.production.url}`
-      : `https://${p.name}.vercel.app`,
-    framework: p.framework || 'nextjs',
-  }));
+      if (res.ok) {
+        const data = await res.json();
+        const projects = data.projects || [];
+        return projects.map((p: any) => {
+          let prodUrl = p.targets?.production?.url;
+          if (!prodUrl && p.alias && p.alias.length > 0) {
+            prodUrl = p.alias[0]?.domain || p.alias[0];
+          }
+          if (!prodUrl) {
+            prodUrl = `${p.name}.vercel.app`;
+          }
+
+          if (!prodUrl.startsWith('http://') && !prodUrl.startsWith('https://')) {
+            prodUrl = `https://${prodUrl}`;
+          }
+
+          return {
+            id: p.id,
+            name: p.name,
+            production_url: prodUrl,
+            framework: p.framework || 'nextjs',
+            gitRepo: p.link?.repo,
+            gitOwner: p.link?.org,
+            updatedAt: p.updatedAt,
+          };
+        });
+      }
+    } catch {
+      // Fallback to Edge function below
+    }
+  }
+
+  // 2. Fallback to Supabase Edge function
+  try {
+    const { data, error } = await supabase.functions.invoke('vercel-sync', {
+      body: { action: 'list_projects' },
+    });
+
+    if (error) return [];
+    if (!data?.projects) return [];
+
+    return data.projects.map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      production_url: p.targets?.production?.url
+        ? `https://${p.targets.production.url}`
+        : `https://${p.name}.vercel.app`,
+      framework: p.framework || 'nextjs',
+      gitRepo: p.link?.repo,
+      gitOwner: p.link?.org,
+      updatedAt: p.updatedAt,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 export async function linkVercelProjectToApp(input: LinkVercelInput): Promise<IntegrationRow> {

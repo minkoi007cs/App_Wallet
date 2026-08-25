@@ -11,6 +11,8 @@ import { useGitHubAccount } from '@/hooks/useGitHub';
 import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/services/auth';
 import { configureGitHubCredentials, getGitHubConfig, importAllGitHubReposAsProjects } from '@/services/github';
+import { configureVercelCredentials, getVercelConfig, getVercelConnectionStatus, fetchAvailableVercelProjects } from '@/services/vercel';
+import { checkSupabaseHealth, SupabaseHealthResult } from '@/services/supabaseStatus';
 import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
 import { showToast } from '@/components/ui/Toast';
 import { router } from 'expo-router';
@@ -22,10 +24,39 @@ export default function SettingsScreen() {
   const { isConnected, refresh } = useGitHubAccount();
 
   const initialConfig = getGitHubConfig();
+  const initialVercelConfig = getVercelConfig();
+
   const [username, setUsername] = useState(initialConfig.username || 'minkoi007cs');
   const [patToken, setPatToken] = useState(initialConfig.token || '');
+  const [vercelToken, setVercelToken] = useState(initialVercelConfig.token || '');
+  const [vercelConnected, setVercelConnected] = useState(false);
+  const [vercelUsername, setVercelUsername] = useState<string | undefined>();
+  const [supabaseHealth, setSupabaseHealth] = useState<SupabaseHealthResult | null>(null);
+
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [syncingVercel, setSyncingVercel] = useState(false);
+
+  React.useEffect(() => {
+    let isMounted = true;
+
+    getVercelConnectionStatus().then((res) => {
+      if (isMounted) {
+        setVercelConnected(res.isConnected);
+        setVercelUsername(res.username);
+      }
+    });
+
+    checkSupabaseHealth('https://ymunwzjmemxifjxsiugz.supabase.co').then((res) => {
+      if (isMounted) {
+        setSupabaseHealth(res);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSaveSync = async () => {
     setSyncing(true);
@@ -42,6 +73,33 @@ export default function SettingsScreen() {
       });
     } finally {
       setSyncing(false);
+    }
+  };
+
+  const handleSaveVercelSync = async () => {
+    setSyncingVercel(true);
+    try {
+      await configureVercelCredentials({
+        token: vercelToken.trim() || undefined,
+      });
+      const status = await getVercelConnectionStatus();
+      setVercelConnected(status.isConnected);
+      setVercelUsername(status.username);
+
+      const projects = await fetchAvailableVercelProjects();
+      showToast({
+        type: 'success',
+        title: 'Vercel Synced',
+        message: `Connected to Vercel (${projects.length} deployments found)!`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Vercel Sync Failed',
+        message: err.message || 'Could not connect to Vercel API.',
+      });
+    } finally {
+      setSyncingVercel(false);
     }
   };
 
@@ -211,32 +269,93 @@ export default function SettingsScreen() {
             <View style={styles.headerTitleBlock}>
               <View style={styles.titleRow}>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Vercel Integration
+                  Vercel Cloud Integration
                 </Text>
-                <Badge label="CONNECTED" variant="healthy" size="sm" />
+                <Badge
+                  label={vercelConnected ? `CONNECTED (${vercelUsername || 'Vercel'})` : 'DISCONNECTED'}
+                  variant={vercelConnected ? 'healthy' : 'neutral'}
+                  size="sm"
+                />
               </View>
               <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                Deployments & domain URL synchronization
+                Connect Vercel API to automatically detect real production & preview URLs
               </Text>
             </View>
+          </View>
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Vercel Personal Access Token</Text>
+          <RNTextInput
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={vercelToken}
+            onChangeText={setVercelToken}
+            placeholder="Enter Vercel Token (from vercel.com/account/tokens)"
+            placeholderTextColor={colors.textMuted}
+            secureTextEntry
+          />
+
+          <View style={styles.buttonRow}>
+            <Button
+              title={syncingVercel ? 'Connecting...' : 'Sync Vercel Projects'}
+              onPress={handleSaveVercelSync}
+              loading={syncingVercel}
+              variant="primary"
+              size="sm"
+            />
+            <Button
+              title="Create Vercel Token"
+              onPress={() => Linking.openURL('https://vercel.com/account/tokens')}
+              variant="ghost"
+              size="sm"
+            />
           </View>
         </Card>
 
         {/* Supabase Database integration info */}
         <Card style={styles.sectionCard}>
           <View style={styles.cardHeader}>
-            <Ionicons name="flash-outline" size={24} color={colors.statusHealthy} />
+            <Ionicons name="flash-outline" size={24} color={colors.brand} />
             <View style={styles.headerTitleBlock}>
               <View style={styles.titleRow}>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Supabase Backend
+                  Supabase Backend & Cloud DB
                 </Text>
-                <Badge label="CONNECTED" variant="healthy" size="sm" />
+                <Badge
+                  label={
+                    supabaseHealth?.status === 'active'
+                      ? `ACTIVE (${supabaseHealth.latencyMs || 0}ms)`
+                      : supabaseHealth?.status === 'paused'
+                      ? 'PAUSED'
+                      : 'ONLINE'
+                  }
+                  variant={
+                    supabaseHealth?.status === 'active'
+                      ? 'healthy'
+                      : supabaseHealth?.status === 'paused'
+                      ? 'critical'
+                      : 'healthy'
+                  }
+                  size="sm"
+                />
               </View>
               <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                Ref: ymunwzjmemxifjxsiugz (aws-0-us-west-2)
+                Connected to project `ymunwzjmemxifjxsiugz` (aws-0-us-west-2)
               </Text>
             </View>
+          </View>
+
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+            <Button
+              title="Open Supabase Console"
+              onPress={() => Linking.openURL('https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz')}
+              variant="outline"
+              size="sm"
+            />
+            <Button
+              title="API Keys & Settings"
+              onPress={() => Linking.openURL('https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz/settings/api')}
+              variant="ghost"
+              size="sm"
+            />
           </View>
         </Card>
       </ScrollView>
