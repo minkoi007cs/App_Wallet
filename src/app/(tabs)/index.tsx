@@ -15,6 +15,7 @@ import { useAnalytics } from '@/hooks/useAnalytics';
 import { StatusDistributionCard } from '@/components/analytics/StatusDistributionCard';
 import { TechStackCard } from '@/components/analytics/TechStackCard';
 import { UpcomingDeadlinesCard } from '@/components/analytics/UpcomingDeadlinesCard';
+import { SmartRecommendationsCard } from '@/components/ai/SmartRecommendationsCard';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -107,6 +108,9 @@ export default function HomeScreen() {
                 )}
               </View>
             )}
+
+            {/* Smart "What should I work on next?" Recommendation */}
+            <SmartRecommendationsCard />
 
             {/* Today's Focus Section */}
             <View style={styles.section}>

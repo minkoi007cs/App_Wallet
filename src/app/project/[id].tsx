@@ -23,6 +23,7 @@ import { useVercelIntegrations } from '@/hooks/useVercel';
 import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
 import { LinkVercelModal } from '@/components/modals/LinkVercelModal';
 import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
+import { AIAgentPromptModal } from '@/components/modals/AIAgentPromptModal';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -45,6 +46,7 @@ export default function ProjectDetailScreen() {
   const [activeTab, setActiveTab] = useState<SubTab>('overview');
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showVercelModal, setShowVercelModal] = useState(false);
+  const [showAIPromptModal, setShowAIPromptModal] = useState(false);
 
   if (loading) {
     return (
@@ -107,13 +109,22 @@ export default function ProjectDetailScreen() {
           title={project.name}
           subtitle={`Updated ${new Date(project.last_activity_at).toLocaleDateString()}`}
           action={
-            <Button
-              title="Edit"
-              onPress={() => router.push(`/project/edit/${project.id}`)}
-              variant="outline"
-              size="sm"
-              icon={<Ionicons name="create-outline" size={16} color={colors.textPrimary} />}
-            />
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button
+                title="AI Prompt"
+                onPress={() => setShowAIPromptModal(true)}
+                variant="primary"
+                size="sm"
+                icon={<Ionicons name="sparkles-outline" size={14} color="#fff" />}
+              />
+              <Button
+                title="Edit"
+                onPress={() => router.push(`/project/edit/${project.id}`)}
+                variant="outline"
+                size="sm"
+                icon={<Ionicons name="create-outline" size={16} color={colors.textPrimary} />}
+              />
+            </View>
           }
         />
 
@@ -415,6 +426,13 @@ export default function ProjectDetailScreen() {
         availableProjects={availableProjects}
         onClose={() => setShowVercelModal(false)}
         onLink={linkVercelProject}
+      />
+
+      <AIAgentPromptModal
+        visible={showAIPromptModal}
+        projectId={projectId}
+        projectName={project.name}
+        onClose={() => setShowAIPromptModal(false)}
       />
     </Container>
   );
