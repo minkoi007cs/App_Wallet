@@ -1,4 +1,4 @@
-import { Stack, useRouter, useSegments } from 'expo-router';
+import { Stack, useRouter, usePathname, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { useColorScheme, View, ActivityIndicator } from 'react-native';
@@ -9,19 +9,24 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { loading, isAuthenticated } = useAuth();
   const segments = useSegments();
+  const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
+    const isAuthRoute =
+      segments.some((s) => s === '(auth)' || s === 'login') ||
+      pathname === '/login' ||
+      pathname === '/(auth)/login' ||
+      pathname.includes('login');
 
-    if (!isAuthenticated && !inAuthGroup) {
+    if (!isAuthenticated && !isAuthRoute) {
       router.replace('/(auth)/login');
-    } else if (isAuthenticated && inAuthGroup) {
+    } else if (isAuthenticated && isAuthRoute) {
       router.replace('/(tabs)');
     }
-  }, [isAuthenticated, loading, segments, router]);
+  }, [isAuthenticated, loading, segments, pathname, router]);
 
   if (loading) {
     return (
