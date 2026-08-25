@@ -306,19 +306,19 @@ export default function ProjectDetailScreen() {
                       Supabase Cloud DB
                     </Text>
                     <Text style={[styles.linkSubText, { color: colors.textSecondary }]} numberOfLines={1}>
-                      {project.supabase_url || 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz'}
+                      {project.supabase_url || 'Not configured'}
                     </Text>
                   </View>
-                  <Button
-                    title="Console"
-                    onPress={() =>
-                      Linking.openURL(
-                        project.supabase_url || 'https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz'
-                      )
-                    }
-                    variant="ghost"
-                    size="sm"
-                  />
+                  {project.supabase_url ? (
+                    <Button
+                      title="Console"
+                      onPress={() => Linking.openURL(project.supabase_url!)}
+                      variant="ghost"
+                      size="sm"
+                    />
+                  ) : (
+                    <Badge label="UNSET" variant="neutral" size="sm" />
+                  )}
                 </View>
               </View>
             </Card>
