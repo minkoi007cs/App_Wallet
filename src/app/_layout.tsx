@@ -4,6 +4,8 @@ import React from 'react';
 import { useColorScheme } from 'react-native';
 import { useAuth } from '@/hooks/useAuth';
 
+import { Toast } from '@/components/ui/Toast';
+
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const { loading, isAuthenticated } = useAuth();
@@ -13,7 +15,12 @@ export default function RootLayout() {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
+    return (
+      <>
+        <Redirect href="/(auth)/login" />
+        <Toast />
+      </>
+    );
   }
 
   return (
@@ -30,6 +37,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <Toast />
     </>
   );
 }

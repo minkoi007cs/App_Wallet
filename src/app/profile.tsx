@@ -4,7 +4,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Alert,
 } from 'react-native';
 import { Container } from '@/components/ui/Container';
 import { Header } from '@/components/ui/Header';
@@ -12,6 +11,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { TextInput } from '@/components/ui/TextInput';
+import { showToast } from '@/components/ui/Toast';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/hooks/useAuth';
@@ -47,9 +47,17 @@ export default function ProfileScreen() {
     setUpdating(true);
     try {
       await updateProfile({ full_name: fullName.trim() });
-      Alert.alert('Success', 'Profile name updated successfully.');
+      showToast({
+        type: 'success',
+        title: 'Profile Updated',
+        message: 'Profile name updated successfully.',
+      });
     } catch (err: any) {
-      Alert.alert('Error', err.message || 'Failed to update profile.');
+      showToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: err.message || 'Failed to update profile.',
+      });
     } finally {
       setUpdating(false);
     }
@@ -60,6 +68,31 @@ export default function ProfileScreen() {
     try {
       const json = await exportUserDataJson();
       setExportedJson(json);
+
+      // Trigger automatic file download on web
+      if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `app-wallet-export-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+
+      showToast({
+        type: 'success',
+        title: 'Data Exported',
+        message: 'Your backup file has been generated and downloaded.',
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Export Failed',
+        message: err.message || 'Failed to export data.',
+      });
     } finally {
       setExporting(false);
     }
