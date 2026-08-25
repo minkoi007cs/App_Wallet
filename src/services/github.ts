@@ -135,38 +135,59 @@ export async function getGitHubConnectionStatus(): Promise<{
 
 export async function fetchUserGitHubRepositories(): Promise<GitHubRepoItem[]> {
   const config = getGitHubConfig();
-  const token = config.token;
-  const username = config.username;
-
-  if (!token && !username) {
-    throw new Error('GitHub not connected. Please go to Settings to enter your GitHub username or Personal Access Token.');
-  }
+  const token = config.token?.trim();
+  const username = config.username?.trim() || 'minkoi007cs';
 
   const headers: Record<string, string> = {
     Accept: 'application/vnd.github.v3+json',
     'User-Agent': 'App-Wallet-Client',
   };
 
+  let rawData: any[] = [];
+
+  // 1. Try authenticated endpoint if token is provided
   if (token) {
-    headers.Authorization = `token ${token}`;
+    try {
+      const authHeaders = {
+        ...headers,
+        Authorization: token.startsWith('Bearer ') || token.startsWith('token ') ? token : `Bearer ${token}`,
+      };
+      const res = await fetch(
+        'https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member&sort=updated',
+        { headers: authHeaders }
+      );
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json)) rawData = json;
+      }
+    } catch {
+      // Fallback to public endpoint below
+    }
   }
 
-  const apiUrl = token
-    ? 'https://api.github.com/user/repos?per_page=100&affiliation=owner,collaborator,organization_member&sort=updated'
-    : `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`;
+  // 2. Fallback to public repos by username if token wasn't provided or returned 401
+  if (!rawData || rawData.length === 0) {
+    const res = await fetch(
+      `https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&sort=updated`,
+      { headers }
+    );
 
-  const res = await fetch(apiUrl, { headers });
+    if (!res.ok) {
+      if (res.status === 404) {
+        throw new Error(`GitHub user "${username}" was not found.`);
+      }
+      throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    }
 
-  if (!res.ok) {
-    throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    const json = await res.json();
+    if (Array.isArray(json)) rawData = json;
   }
 
-  const rawData = await res.json();
   if (!Array.isArray(rawData)) return [];
 
   return rawData.map((item: any) => ({
     id: String(item.id),
-    owner: item.owner?.login || activeGitHubUsername,
+    owner: item.owner?.login || username,
     name: item.name,
     full_name: item.full_name,
     url: item.html_url,
@@ -194,10 +215,19 @@ export async function fetchRealCommitInfo(owner: string, repo: string): Promise<
     };
     const config = getGitHubConfig();
     if (config.token) {
-      headers.Authorization = `token ${config.token}`;
+      headers.Authorization =
+        config.token.startsWith('Bearer ') || config.token.startsWith('token ')
+          ? config.token
+          : `Bearer ${config.token}`;
     }
 
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`, { headers });
+    let res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`, { headers });
+    if (!res.ok && res.status === 401 && headers.Authorization) {
+      // Retry without invalid token for public repos
+      delete headers.Authorization;
+      res = await fetch(`https://api.github.com/repos/${owner}/${repo}/commits?per_page=1`, { headers });
+    }
+
     if (res.ok) {
       const data = await res.json();
       const firstCommit = data?.[0];
@@ -211,8 +241,9 @@ export async function fetchRealCommitInfo(owner: string, repo: string): Promise<
       }
     }
   } catch {
-    // Non-critical — commit info is supplementary
+    // Commit info optional
   }
+
   return null;
 }
 
