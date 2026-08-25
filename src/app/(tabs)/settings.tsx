@@ -13,6 +13,7 @@ import { signOut } from '@/services/auth';
 import { configureGitHubCredentials, getGitHubConfig, importAllGitHubReposAsProjects } from '@/services/github';
 import { configureVercelCredentials, getVercelConfig, getVercelConnectionStatus, fetchAvailableVercelProjects } from '@/services/vercel';
 import { checkSupabaseHealth, SupabaseHealthResult } from '@/services/supabaseStatus';
+import { resetAllProjectsDeploymentUrls } from '@/services/urlDetector';
 import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
 import { showToast } from '@/components/ui/Toast';
 import { router } from 'expo-router';
@@ -125,6 +126,28 @@ export default function SettingsScreen() {
       });
     } finally {
       setImporting(false);
+    }
+  };
+
+  const [resettingAll, setResettingAll] = useState(false);
+
+  const handleResetAllUrls = async () => {
+    setResettingAll(true);
+    try {
+      const count = await resetAllProjectsDeploymentUrls();
+      showToast({
+        type: 'info',
+        title: 'All URLs Reset',
+        message: `Cleared deployment & Supabase URLs on ${count} projects.`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Reset Failed',
+        message: err.message || 'Could not reset project URLs.',
+      });
+    } finally {
+      setResettingAll(false);
     }
   };
 
@@ -357,6 +380,30 @@ export default function SettingsScreen() {
               size="sm"
             />
           </View>
+        </Card>
+
+        {/* URL Cleanup & Maintenance */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="trash-outline" size={24} color={colors.statusCritical} />
+            <View style={styles.headerTitleBlock}>
+              <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                Project URLs Reset & Cleanup
+              </Text>
+              <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                Clear all auto-detected or incorrect frontend, backend & Supabase URLs across all projects
+              </Text>
+            </View>
+          </View>
+
+          <Button
+            title={resettingAll ? 'Resetting All...' : 'Reset All Project URLs to Blank'}
+            onPress={handleResetAllUrls}
+            loading={resettingAll}
+            variant="outline"
+            size="sm"
+            style={{ alignSelf: 'flex-start' }}
+          />
         </Card>
       </ScrollView>
     </Container>

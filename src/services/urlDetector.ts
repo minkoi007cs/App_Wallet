@@ -191,27 +191,13 @@ export function detectUrlsFromMetadata(
     }
   }
 
-  // 3. Check GitHub Repositories metadata (homepage or common vercel domains)
+  // 3. Check GitHub Repositories metadata (homepage set on GitHub)
   for (const repo of repos) {
     const homepage = cleanUrl((repo as any)?.homepage);
     if (homepage && !frontend_url) {
       frontend_url = homepage;
       sources.frontend = `GitHub Repo Homepage (${repo.name})`;
     }
-
-    const repoName = (repo.name || '').toLowerCase();
-    if (repoName.includes('backend') || repoName.includes('server') || repoName.includes('api')) {
-      if (!backend_url && !sources.backend) {
-        backend_url = `https://${repo.name.toLowerCase().replace(/_/g, '-')}.vercel.app`;
-        sources.backend = `Heuristic (${repo.name}.vercel.app)`;
-      }
-    }
-  }
-
-  // 4. Default Vercel domain pattern if still missing
-  if (!frontend_url) {
-    frontend_url = `https://${projectName.toLowerCase().replace(/_/g, '-')}.vercel.app`;
-    sources.frontend = 'Default Vercel domain pattern';
   }
 
   return {
@@ -224,7 +210,7 @@ export function detectUrlsFromMetadata(
 }
 
 /**
- * Scans a project, auto-detects URLs (including scanning GitHub repo files for Supabase),
+ * Scans a project, auto-detects ONLY confirmed URLs (Vercel integrations & repo config files),
  * and saves changes directly to Supabase
  */
 export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<ProjectWithDetails> {
@@ -252,13 +238,13 @@ export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<P
   }
 
   const updates: Record<string, string | null> = {};
-  if (detected.frontend_url && (!project.frontend_url || project.frontend_url !== detected.frontend_url)) {
+  if (detected.frontend_url && project.frontend_url !== detected.frontend_url) {
     updates.frontend_url = detected.frontend_url;
   }
-  if (detected.backend_url && (!project.backend_url || project.backend_url !== detected.backend_url)) {
+  if (detected.backend_url && project.backend_url !== detected.backend_url) {
     updates.backend_url = detected.backend_url;
   }
-  if (detected.supabase_url && (!project.supabase_url || project.supabase_url !== detected.supabase_url)) {
+  if (detected.supabase_url && project.supabase_url !== detected.supabase_url) {
     updates.supabase_url = detected.supabase_url;
   }
 
@@ -267,4 +253,39 @@ export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<P
   }
 
   return project;
+}
+
+/**
+ * Resets/clears all deployment URLs (frontend, backend, supabase) for a project
+ */
+export async function resetProjectDeploymentUrls(projectId: string): Promise<ProjectWithDetails> {
+  return await updateProject(projectId, {
+    frontend_url: null,
+    backend_url: null,
+    supabase_url: null,
+  });
+}
+
+/**
+ * Resets deployment URLs for all active user projects
+ */
+export async function resetAllProjectsDeploymentUrls(): Promise<number> {
+  const { fetchProjects } = await import('./projects');
+  const projects = await fetchProjects();
+  let count = 0;
+
+  for (const p of projects) {
+    try {
+      await updateProject(p.id, {
+        frontend_url: null,
+        backend_url: null,
+        supabase_url: null,
+      });
+      count++;
+    } catch {
+      // ignore
+    }
+  }
+
+  return count;
 }
