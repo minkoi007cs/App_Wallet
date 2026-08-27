@@ -2,6 +2,7 @@ import { fetchProjectById, updateProject, ProjectWithDetails } from './projects'
 import { fetchProjectRepositories, GitHubRepoItem, getGitHubConfig } from './github';
 import { fetchProjectIntegrations, fetchAvailableVercelProjects, IntegrationRow, VercelProjectItem } from './vercel';
 import { extractSupabaseRef } from './supabaseStatus';
+import { getAllManagedSupabaseProjects } from './supabaseAccounts';
 
 export interface DetectedUrlsResult {
   frontend_url?: string;
@@ -223,8 +224,27 @@ export async function autoDetectAndSaveProjectUrls(projectId: string): Promise<P
 
   const detected = detectUrlsFromMetadata(project.name, repos, integrations, vercelProjects);
 
-  // Deep scan GitHub repos for Supabase URL if not set
+  // 1. Cross-reference connected Supabase accounts (across all Gmails)
   if (!project.supabase_url) {
+    const managedProjects = getAllManagedSupabaseProjects();
+    const cleanProjectName = project.name.toLowerCase().replace(/[-_]/g, '');
+
+    for (const mp of managedProjects) {
+      const cleanMpName = mp.name.toLowerCase().replace(/[-_]/g, '');
+      if (
+        cleanMpName === cleanProjectName ||
+        cleanMpName.includes(cleanProjectName) ||
+        cleanProjectName.includes(cleanMpName)
+      ) {
+        detected.supabase_url = mp.url;
+        detected.sources.supabase = `Connected Supabase Account (${mp.accountEmail})`;
+        break;
+      }
+    }
+  }
+
+  // 2. Deep scan GitHub repos for Supabase URL if still not set
+  if (!project.supabase_url && !detected.supabase_url) {
     for (const repo of repos) {
       if (repo.owner && repo.name) {
         const found = await scanRepoForSupabaseUrl(repo.owner, repo.name);

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { normalizeSupabaseApiUrl } from '@/services/supabaseStatus';
+import { getAllManagedSupabaseProjects } from '@/services/supabaseAccounts';
 import { Ionicons } from '@expo/vector-icons';
 
 interface SetUrlsModalProps {
@@ -39,6 +39,8 @@ function SetUrlsContent({
   const [backendUrl, setBackendUrl] = useState(initialBackendUrl || '');
   const [supabaseUrl, setSupabaseUrl] = useState(initialSupabaseUrl || '');
   const [saving, setSaving] = useState(false);
+
+  const managedSupabaseProjects = getAllManagedSupabaseProjects();
 
   const handleSave = async () => {
     setSaving(true);
@@ -169,6 +171,49 @@ function SetUrlsContent({
             <Text style={[styles.helperText, { color: colors.textMuted }]}>
               Supports full URL, dashboard link, or 20-character project ref.
             </Text>
+
+            {/* Quick-Pick Connected Supabase Databases */}
+            {managedSupabaseProjects.length > 0 && (
+              <View style={{ marginTop: 10 }}>
+                <Text style={{ fontSize: 11, fontWeight: '600', color: colors.textSecondary, marginBottom: 6 }}>
+                  Quick pick from your connected Supabase accounts:
+                </Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                  {managedSupabaseProjects.map((mp) => {
+                    const isSelected = supabaseUrl.includes(mp.id);
+                    return (
+                      <TouchableOpacity
+                        key={mp.id}
+                        onPress={() => setSupabaseUrl(mp.url)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 6,
+                          paddingHorizontal: 8,
+                          paddingVertical: 5,
+                          borderRadius: Radius.sm,
+                          borderWidth: 1,
+                          borderColor: isSelected ? colors.brand : colors.border,
+                          backgroundColor: isSelected ? colors.brand + '20' : colors.surface,
+                        }}
+                      >
+                        <Ionicons
+                          name={mp.status === 'PAUSED' ? 'alert-circle' : 'flash'}
+                          size={12}
+                          color={mp.status === 'PAUSED' ? colors.statusCritical : colors.statusHealthy}
+                        />
+                        <Text style={{ fontSize: 11, color: colors.textPrimary, fontWeight: isSelected ? '700' : '500' }}>
+                          {mp.name}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: colors.textMuted }}>
+                          ({mp.accountEmail.split('@')[0]})
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
           </View>
         </ScrollView>
 

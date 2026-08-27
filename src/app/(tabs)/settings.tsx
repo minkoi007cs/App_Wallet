@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, View, Text, StyleSheet, Linking, TextInput as RNTextInput } from 'react-native';
+import { ScrollView, View, Text, StyleSheet, Linking, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { Container } from '@/components/ui/Container';
 import { Header } from '@/components/ui/Header';
 import { Card } from '@/components/ui/Card';
@@ -12,7 +12,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { signOut } from '@/services/auth';
 import { configureGitHubCredentials, getGitHubConfig, importAllGitHubReposAsProjects } from '@/services/github';
 import { configureVercelCredentials, getVercelConfig, getVercelConnectionStatus, fetchAvailableVercelProjects } from '@/services/vercel';
-import { checkSupabaseHealth, SupabaseHealthResult } from '@/services/supabaseStatus';
+import {
+  getSupabaseAccounts,
+  addOrUpdateSupabaseAccount,
+  addManualSupabaseProject,
+  removeSupabaseAccount,
+  syncAllSupabaseAccounts,
+  SupabaseAccount,
+} from '@/services/supabaseAccounts';
 import { resetAllProjectsDeploymentUrls } from '@/services/urlDetector';
 import { NotificationPreferencesCard } from '@/components/notifications/NotificationPreferencesCard';
 import { showToast } from '@/components/ui/Toast';
@@ -32,7 +39,16 @@ export default function SettingsScreen() {
   const [vercelToken, setVercelToken] = useState(initialVercelConfig.token || '');
   const [vercelConnected, setVercelConnected] = useState(false);
   const [vercelUsername, setVercelUsername] = useState<string | undefined>();
-  const [supabaseHealth, setSupabaseHealth] = useState<SupabaseHealthResult | null>(null);
+
+  // Multi-account Supabase state
+  const [supabaseAccounts, setSupabaseAccounts] = useState<SupabaseAccount[]>(() => getSupabaseAccounts());
+  const [showAddSbForm, setShowAddSbForm] = useState(false);
+  const [sbAccountEmail, setSbAccountEmail] = useState('');
+  const [sbAccountToken, setSbAccountToken] = useState('');
+  const [sbManualRef, setSbManualRef] = useState('');
+  const [sbProjectName, setSbProjectName] = useState('');
+  const [addingSbAccount, setAddingSbAccount] = useState(false);
+  const [syncingSbAccounts, setSyncingSbAccounts] = useState(false);
 
   const [syncing, setSyncing] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -48,16 +64,93 @@ export default function SettingsScreen() {
       }
     });
 
-    checkSupabaseHealth('https://ymunwzjmemxifjxsiugz.supabase.co').then((res) => {
-      if (isMounted) {
-        setSupabaseHealth(res);
-      }
-    });
-
     return () => {
       isMounted = false;
     };
   }, []);
+
+  const handleSyncAllSbAccounts = async () => {
+    setSyncingSbAccounts(true);
+    try {
+      const res = await syncAllSupabaseAccounts();
+      setSupabaseAccounts([...getSupabaseAccounts()]);
+      showToast({
+        type: 'success',
+        title: 'Supabase Accounts Synced',
+        message: `Synced ${res.totalAccounts} accounts (${res.totalProjects} databases verified)!`,
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Sync Failed',
+        message: err.message || 'Could not sync Supabase accounts.',
+      });
+    } finally {
+      setSyncingSbAccounts(false);
+    }
+  };
+
+  const handleAddSbAccount = async () => {
+    if (!sbAccountEmail.trim()) {
+      showToast({
+        type: 'info',
+        title: 'Email Required',
+        message: 'Please enter a Gmail/Account label for this Supabase account.',
+      });
+      return;
+    }
+
+    setAddingSbAccount(true);
+    try {
+      if (sbAccountToken.trim()) {
+        await addOrUpdateSupabaseAccount(sbAccountEmail.trim(), sbAccountToken.trim());
+        showToast({
+          type: 'success',
+          title: 'Account Added',
+          message: `Connected Supabase account ${sbAccountEmail.trim()} and fetched projects!`,
+        });
+      } else if (sbManualRef.trim()) {
+        addManualSupabaseProject(sbAccountEmail.trim(), sbProjectName.trim(), sbManualRef.trim());
+        showToast({
+          type: 'success',
+          title: 'Database Registered',
+          message: `Registered database ${sbManualRef.trim()} under ${sbAccountEmail.trim()}!`,
+        });
+      } else {
+        showToast({
+          type: 'info',
+          title: 'Token or Project Ref Required',
+          message: 'Please enter a Personal Access Token (sbp_...) or a Project Ref.',
+        });
+        return;
+      }
+
+      setSupabaseAccounts([...getSupabaseAccounts()]);
+      setSbAccountEmail('');
+      setSbAccountToken('');
+      setSbManualRef('');
+      setSbProjectName('');
+      setShowAddSbForm(false);
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Could Not Add Account',
+        message: err.message || 'Check your token or project ref.',
+      });
+    } finally {
+      setAddingSbAccount(false);
+    }
+  };
+
+  const handleRemoveAccount = (id: string) => {
+    removeSupabaseAccount(id);
+    setSupabaseAccounts([...getSupabaseAccounts()]);
+    showToast({
+      type: 'info',
+      title: 'Account Removed',
+      message: 'Removed Supabase account from App Wallet.',
+    });
+  };
 
   const handleSaveSync = async () => {
     setSyncing(true);
@@ -333,53 +426,202 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* Supabase Database integration info */}
+        {/* Multi-Account Supabase Manager Card */}
         <Card style={styles.sectionCard}>
           <View style={styles.cardHeader}>
             <Ionicons name="flash-outline" size={24} color={colors.brand} />
             <View style={styles.headerTitleBlock}>
               <View style={styles.titleRow}>
                 <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Supabase Backend & Cloud DB
+                  Supabase Multi-Account Manager
                 </Text>
                 <Badge
-                  label={
-                    supabaseHealth?.status === 'active'
-                      ? `ACTIVE (${supabaseHealth.latencyMs || 0}ms)`
-                      : supabaseHealth?.status === 'paused'
-                      ? 'PAUSED'
-                      : 'ONLINE'
-                  }
-                  variant={
-                    supabaseHealth?.status === 'active'
-                      ? 'healthy'
-                      : supabaseHealth?.status === 'paused'
-                      ? 'critical'
-                      : 'healthy'
-                  }
+                  label={`${supabaseAccounts.length} ACCOUNTS / ${supabaseAccounts.reduce((acc, a) => acc + a.projects.length, 0)} DBS`}
+                  variant="healthy"
                   size="sm"
                 />
               </View>
               <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                Connected to project `ymunwzjmemxifjxsiugz` (aws-0-us-west-2)
+                Connect multiple Gmail accounts to bypass the 2-project free limit & monitor live database health
               </Text>
             </View>
           </View>
 
-          <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-            <Button
-              title="Open Supabase Console"
-              onPress={() => Linking.openURL('https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz')}
-              variant="outline"
-              size="sm"
-            />
-            <Button
-              title="API Keys & Settings"
-              onPress={() => Linking.openURL('https://supabase.com/dashboard/project/ymunwzjmemxifjxsiugz/settings/api')}
-              variant="ghost"
-              size="sm"
-            />
+          {/* Account Lists */}
+          <View style={{ gap: 12, marginBottom: 16 }}>
+            {supabaseAccounts.map((account) => (
+              <View
+                key={account.id}
+                style={{
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  borderRadius: Radius.lg,
+                  padding: Spacing[3],
+                }}
+              >
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="mail-outline" size={16} color={colors.brand} />
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary }}>
+                      {account.emailLabel}
+                    </Text>
+                    <Badge label={`${account.projects.length}/2 Projects`} variant="neutral" size="sm" />
+                  </View>
+                  {account.id !== 'acc_primary' && (
+                    <TouchableOpacity onPress={() => handleRemoveAccount(account.id)} style={{ padding: 4 }}>
+                      <Ionicons name="trash-outline" size={16} color={colors.statusCritical} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
+                {/* Databases under this account */}
+                <View style={{ gap: 6 }}>
+                  {account.projects.map((proj) => (
+                    <View
+                      key={proj.id}
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        backgroundColor: colors.surface,
+                        paddingHorizontal: Spacing[3],
+                        paddingVertical: Spacing[2],
+                        borderRadius: Radius.md,
+                      }}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: 12, fontWeight: '600', color: colors.textPrimary }}>
+                            {proj.name}
+                          </Text>
+                          <Badge
+                            label={proj.status === 'PAUSED' ? 'PAUSED' : 'ACTIVE'}
+                            variant={proj.status === 'PAUSED' ? 'critical' : 'healthy'}
+                            size="sm"
+                          />
+                        </View>
+                        <Text style={{ fontSize: 10, color: colors.textSecondary, marginTop: 2 }}>
+                          {proj.id} • {proj.region}
+                        </Text>
+                      </View>
+
+                      <Button
+                        title={proj.status === 'PAUSED' ? 'Unpause' : 'Console'}
+                        onPress={() => Linking.openURL(proj.dashboardUrl)}
+                        variant={proj.status === 'PAUSED' ? 'primary' : 'ghost'}
+                        size="sm"
+                      />
+                    </View>
+                  ))}
+                  {account.projects.length === 0 && (
+                    <Text style={{ fontSize: 11, color: colors.textMuted, fontStyle: 'italic' }}>
+                      No projects found under this account yet.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
           </View>
+
+          {/* Add Account Inline Form */}
+          {showAddSbForm ? (
+            <View
+              style={{
+                backgroundColor: colors.surface,
+                borderColor: colors.brand + '40',
+                borderWidth: 1,
+                borderRadius: Radius.lg,
+                padding: Spacing[4],
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 }}>
+                Add Another Supabase Account (Gmail / Workspace)
+              </Text>
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Account Email / Label *</Text>
+              <RNTextInput
+                style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                value={sbAccountEmail}
+                onChangeText={setSbAccountEmail}
+                placeholder="e.g. account2@gmail.com"
+                placeholderTextColor={colors.textMuted}
+                autoCapitalize="none"
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 8 }]}>
+                Option A: Supabase Personal Access Token (PAT) - Auto-fetches all projects
+              </Text>
+              <RNTextInput
+                style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                value={sbAccountToken}
+                onChangeText={setSbAccountToken}
+                placeholder="sbp_xxxxxxxxxxxx (from supabase.com/dashboard/account/tokens)"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+              />
+
+              <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 8 }]}>
+                Option B: Or Manually Add Project Ref / URL
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                <RNTextInput
+                  style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={sbProjectName}
+                  onChangeText={setSbProjectName}
+                  placeholder="Project Name (e.g. House Renting)"
+                  placeholderTextColor={colors.textMuted}
+                />
+                <RNTextInput
+                  style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+                  value={sbManualRef}
+                  onChangeText={setSbManualRef}
+                  placeholder="Ref (e.g. lnuijfoohwvunatwuqjx)"
+                  placeholderTextColor={colors.textMuted}
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+                <Button
+                  title={addingSbAccount ? 'Connecting...' : 'Add Account'}
+                  onPress={handleAddSbAccount}
+                  loading={addingSbAccount}
+                  variant="primary"
+                  size="sm"
+                />
+                <Button
+                  title="Cancel"
+                  onPress={() => setShowAddSbForm(false)}
+                  variant="outline"
+                  size="sm"
+                />
+                <Button
+                  title="Create Token"
+                  onPress={() => Linking.openURL('https://supabase.com/dashboard/account/tokens')}
+                  variant="ghost"
+                  size="sm"
+                />
+              </View>
+            </View>
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button
+                title="+ Add Supabase Account / Database"
+                onPress={() => setShowAddSbForm(true)}
+                variant="primary"
+                size="sm"
+              />
+              <Button
+                title={syncingSbAccounts ? 'Syncing...' : 'Sync All Databases'}
+                onPress={handleSyncAllSbAccounts}
+                loading={syncingSbAccounts}
+                variant="outline"
+                size="sm"
+              />
+            </View>
+          )}
         </Card>
 
         {/* URL Cleanup & Maintenance */}
