@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Radius, Spacing, Typography } from '@/constants/theme';
 import { useTheme } from '@/hooks/useTheme';
+import { normalizeSupabaseApiUrl } from '@/services/supabaseStatus';
 import { getAllManagedSupabaseProjects } from '@/services/supabaseAccounts';
 import { Ionicons } from '@expo/vector-icons';
 
