@@ -301,132 +301,7 @@ export default function SettingsScreen() {
           </View>
         </Card>
 
-        {/* Notification Preferences Section */}
-        <NotificationPreferencesCard />
-
-        {/* Real GitHub Integration Card */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="logo-github" size={24} color={colors.textPrimary} />
-            <View style={styles.headerTitleBlock}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Live GitHub Data Connection
-                </Text>
-                <Badge
-                  label={isConnected ? 'CONNECTED' : 'DISCONNECTED'}
-                  variant={isConnected ? 'healthy' : 'neutral'}
-                  size="sm"
-                />
-              </View>
-              <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                Connect your real GitHub account to fetch live repositories & commits
-              </Text>
-            </View>
-          </View>
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>GitHub Username *</Text>
-          <RNTextInput
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="e.g. minkoi007cs"
-            placeholderTextColor={colors.textMuted}
-          />
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Personal Access Token (PAT - Optional for private repos)</Text>
-          <RNTextInput
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-            value={patToken}
-            onChangeText={setPatToken}
-            placeholder="ghp_xxxxxxxxxxxx (Optional)"
-            placeholderTextColor={colors.textMuted}
-            secureTextEntry
-          />
-
-          <View style={styles.buttonRow}>
-            <Button
-              title={syncing ? 'Syncing...' : 'Sync GitHub Repos'}
-              onPress={handleSaveSync}
-              loading={syncing}
-              variant="primary"
-              size="sm"
-            />
-            <Button
-              title={importing ? 'Importing All...' : 'Auto-Import All Repos'}
-              onPress={handleAutoImport}
-              loading={importing}
-              variant="outline"
-              size="sm"
-            />
-          </View>
-
-          <View style={styles.scopesBox}>
-            <Text style={[styles.scopesTitle, { color: colors.textPrimary }]}>
-              OAuth Web Flow
-            </Text>
-            <Text style={[styles.scopesText, { color: colors.textSecondary }]}>
-              Or connect via secret-isolated Deno Edge Function (`github-oauth`).
-            </Text>
-            <Button
-              title="Connect via GitHub OAuth"
-              onPress={handleConnectGitHubOAuth}
-              variant="ghost"
-              size="sm"
-              style={{ marginTop: 6, alignSelf: 'flex-start' }}
-            />
-          </View>
-        </Card>
-
-        {/* Vercel Integration */}
-        <Card style={styles.sectionCard}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="triangle-outline" size={24} color={colors.textPrimary} />
-            <View style={styles.headerTitleBlock}>
-              <View style={styles.titleRow}>
-                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
-                  Vercel Cloud Integration
-                </Text>
-                <Badge
-                  label={vercelConnected ? `CONNECTED (${vercelUsername || 'Vercel'})` : 'DISCONNECTED'}
-                  variant={vercelConnected ? 'healthy' : 'neutral'}
-                  size="sm"
-                />
-              </View>
-              <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-                Connect Vercel API to automatically detect real production & preview URLs
-              </Text>
-            </View>
-          </View>
-
-          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Vercel Personal Access Token</Text>
-          <RNTextInput
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-            value={vercelToken}
-            onChangeText={setVercelToken}
-            placeholder="Enter Vercel Token (from vercel.com/account/tokens)"
-            placeholderTextColor={colors.textMuted}
-            secureTextEntry
-          />
-
-          <View style={styles.buttonRow}>
-            <Button
-              title={syncingVercel ? 'Connecting...' : 'Sync Vercel Projects'}
-              onPress={handleSaveVercelSync}
-              loading={syncingVercel}
-              variant="primary"
-              size="sm"
-            />
-            <Button
-              title="Create Vercel Token"
-              onPress={() => Linking.openURL('https://vercel.com/account/tokens')}
-              variant="ghost"
-              size="sm"
-            />
-          </View>
-        </Card>
-
-        {/* Multi-Account Supabase Manager Card */}
+        {/* Supabase Multi-Account Manager Card (TOP INTEGRATION) */}
         <Card style={styles.sectionCard}>
           <View style={styles.cardHeader}>
             <Ionicons name="flash-outline" size={24} color={colors.brand} />
@@ -623,6 +498,131 @@ export default function SettingsScreen() {
             </View>
           )}
         </Card>
+
+        {/* Real GitHub Integration Card */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="logo-github" size={24} color={colors.textPrimary} />
+            <View style={styles.headerTitleBlock}>
+              <View style={styles.titleRow}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  Live GitHub Data Connection
+                </Text>
+                <Badge
+                  label={isConnected ? 'CONNECTED' : 'DISCONNECTED'}
+                  variant={isConnected ? 'healthy' : 'neutral'}
+                  size="sm"
+                />
+              </View>
+              <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                Connect your real GitHub account to fetch live repositories & commits
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>GitHub Username *</Text>
+          <RNTextInput
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={username}
+            onChangeText={setUsername}
+            placeholder="e.g. minkoi007cs"
+            placeholderTextColor={colors.textMuted}
+          />
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Personal Access Token (PAT - Optional for private repos)</Text>
+          <RNTextInput
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={patToken}
+            onChangeText={setPatToken}
+            placeholder="ghp_xxxxxxxxxxxx (Optional)"
+            placeholderTextColor={colors.textMuted}
+            secureTextEntry
+          />
+
+          <View style={styles.buttonRow}>
+            <Button
+              title={syncing ? 'Syncing...' : 'Sync GitHub Repos'}
+              onPress={handleSaveSync}
+              loading={syncing}
+              variant="primary"
+              size="sm"
+            />
+            <Button
+              title={importing ? 'Importing All...' : 'Auto-Import All Repos'}
+              onPress={handleAutoImport}
+              loading={importing}
+              variant="outline"
+              size="sm"
+            />
+          </View>
+
+          <View style={styles.scopesBox}>
+            <Text style={[styles.scopesTitle, { color: colors.textPrimary }]}>
+              OAuth Web Flow
+            </Text>
+            <Text style={[styles.scopesText, { color: colors.textSecondary }]}>
+              Or connect via secret-isolated Deno Edge Function (`github-oauth`).
+            </Text>
+            <Button
+              title="Connect via GitHub OAuth"
+              onPress={handleConnectGitHubOAuth}
+              variant="ghost"
+              size="sm"
+              style={{ marginTop: 6, alignSelf: 'flex-start' }}
+            />
+          </View>
+        </Card>
+
+        {/* Vercel Integration */}
+        <Card style={styles.sectionCard}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="triangle-outline" size={24} color={colors.textPrimary} />
+            <View style={styles.headerTitleBlock}>
+              <View style={styles.titleRow}>
+                <Text style={[styles.cardTitle, { color: colors.textPrimary }]}>
+                  Vercel Cloud Integration
+                </Text>
+                <Badge
+                  label={vercelConnected ? `CONNECTED (${vercelUsername || 'Vercel'})` : 'DISCONNECTED'}
+                  variant={vercelConnected ? 'healthy' : 'neutral'}
+                  size="sm"
+                />
+              </View>
+              <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
+                Connect Vercel API to automatically detect real production & preview URLs
+              </Text>
+            </View>
+          </View>
+
+          <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Vercel Personal Access Token</Text>
+          <RNTextInput
+            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
+            value={vercelToken}
+            onChangeText={setVercelToken}
+            placeholder="Enter Vercel Token (from vercel.com/account/tokens)"
+            placeholderTextColor={colors.textMuted}
+            secureTextEntry
+          />
+
+          <View style={styles.buttonRow}>
+            <Button
+              title={syncingVercel ? 'Connecting...' : 'Sync Vercel Projects'}
+              onPress={handleSaveVercelSync}
+              loading={syncingVercel}
+              variant="primary"
+              size="sm"
+            />
+            <Button
+              title="Create Vercel Token"
+              onPress={() => Linking.openURL('https://vercel.com/account/tokens')}
+              variant="ghost"
+              size="sm"
+            />
+          </View>
+        </Card>
+
+        {/* Notification Preferences Section */}
+        <NotificationPreferencesCard />
 
         {/* URL Cleanup & Maintenance */}
         <Card style={styles.sectionCard}>
