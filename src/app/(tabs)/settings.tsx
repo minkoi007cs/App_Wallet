@@ -110,7 +110,7 @@ export default function SettingsScreen() {
           message: `Connected Supabase account ${sbAccountEmail.trim()} and fetched projects!`,
         });
       } else if (sbManualRef.trim()) {
-        addManualSupabaseProject(sbAccountEmail.trim(), sbProjectName.trim(), sbManualRef.trim());
+        await addManualSupabaseProject(sbAccountEmail.trim(), sbProjectName.trim(), sbManualRef.trim());
         showToast({
           type: 'success',
           title: 'Database Registered',
@@ -411,11 +411,14 @@ export default function SettingsScreen() {
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 13, fontWeight: '700', color: colors.textPrimary, marginBottom: 8 }}>
-                Add Another Supabase Account (Gmail / Workspace)
+              <Text style={{ fontSize: 14, fontWeight: '700', color: colors.textPrimary, marginBottom: 4 }}>
+                Add Supabase Account / Database
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 12 }}>
+                Connect another Gmail or register individual Supabase databases
               </Text>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Account Email / Label *</Text>
+              <Text style={[styles.inputLabel, { color: colors.textSecondary }]}>Account Email / Gmail Label *</Text>
               <RNTextInput
                 style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
                 value={sbAccountEmail}
@@ -425,42 +428,46 @@ export default function SettingsScreen() {
                 autoCapitalize="none"
               />
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 8 }]}>
-                Option A: Supabase Personal Access Token (PAT) - Auto-fetches all projects
-              </Text>
-              <RNTextInput
-                style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                value={sbAccountToken}
-                onChangeText={setSbAccountToken}
-                placeholder="sbp_xxxxxxxxxxxx (from supabase.com/dashboard/account/tokens)"
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-              />
+              <View style={{ backgroundColor: colors.border + '20', padding: Spacing[3], borderRadius: Radius.md, marginVertical: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.brand, marginBottom: 6 }}>
+                  Method 1: Direct Project Ref / URL (Instant & 100% Reliable)
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  <RNTextInput
+                    style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
+                    value={sbProjectName}
+                    onChangeText={setSbProjectName}
+                    placeholder="DB Name (e.g. House Renting)"
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <RNTextInput
+                    style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
+                    value={sbManualRef}
+                    onChangeText={setSbManualRef}
+                    placeholder="Ref (e.g. lnuijfoohwvunatwuqjx)"
+                    placeholderTextColor={colors.textMuted}
+                    autoCapitalize="none"
+                  />
+                </View>
+              </View>
 
-              <Text style={[styles.inputLabel, { color: colors.textSecondary, marginTop: 8 }]}>
-                Option B: Or Manually Add Project Ref / URL
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 6 }}>
+              <View style={{ backgroundColor: colors.border + '20', padding: Spacing[3], borderRadius: Radius.md, marginVertical: 6 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 6 }}>
+                  Method 2: Or Supabase PAT Token (Auto-fetches all 2 projects)
+                </Text>
                 <RNTextInput
-                  style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={sbProjectName}
-                  onChangeText={setSbProjectName}
-                  placeholder="Project Name (e.g. House Renting)"
+                  style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface, marginBottom: 0 }]}
+                  value={sbAccountToken}
+                  onChangeText={setSbAccountToken}
+                  placeholder="sbp_xxxxxxxxxxxx (from supabase.com/dashboard/account/tokens)"
                   placeholderTextColor={colors.textMuted}
-                />
-                <RNTextInput
-                  style={[styles.input, { flex: 1, color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.surface }]}
-                  value={sbManualRef}
-                  onChangeText={setSbManualRef}
-                  placeholder="Ref (e.g. lnuijfoohwvunatwuqjx)"
-                  placeholderTextColor={colors.textMuted}
-                  autoCapitalize="none"
+                  secureTextEntry
                 />
               </View>
 
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
                 <Button
-                  title={addingSbAccount ? 'Connecting...' : 'Add Account'}
+                  title={addingSbAccount ? 'Connecting...' : 'Save & Connect'}
                   onPress={handleAddSbAccount}
                   loading={addingSbAccount}
                   variant="primary"

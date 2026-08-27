@@ -1,4 +1,4 @@
-import { extractSupabaseRef, getSupabaseDashboardUrl } from './supabaseStatus';
+import { extractSupabaseRef, getSupabaseDashboardUrl, checkSupabaseHealth } from './supabaseStatus';
 
 export interface SupabaseManagedProject {
   id: string; // Project ref, e.g. "ymunwzjmemxifjxsiugz"
@@ -8,6 +8,7 @@ export interface SupabaseManagedProject {
   url: string; // "https://ymunwzjmemxifjxsiugz.supabase.co"
   dashboardUrl: string;
   accountEmail: string;
+  latencyMs?: number;
   updatedAt?: string;
 }
 
@@ -78,37 +79,89 @@ function saveAccounts(accounts: SupabaseAccount[]) {
 
 // ──────────────── SUPABASE MANAGEMENT REST API ────────────────
 
+const EDGE_FUNCTION_URL = 'https://ymunwzjmemxifjxsiugz.supabase.co/functions/v1/supabase-sync';
+const ANON_KEY =
+  process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InltdW53emptZW14aWZqeHNpdWd6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc1ODE4MzMsImV4cCI6MjEwMzE1NzgzM30.EZSp-mKu2_OSxJEU4ggHas8FPXAkkTttVNygh0hsoZ8';
+
 /**
  * Fetches real projects from Supabase Management API using Personal Access Token
- * https://api.supabase.com/v1/projects
+ * Tries Edge Function proxy first to bypass browser CORS restrictions.
  */
 export async function fetchSupabaseProjectsFromToken(token: string, emailLabel: string): Promise<SupabaseManagedProject[]> {
   const cleanToken = token.trim();
-  const res = await fetch('https://api.supabase.com/v1/projects', {
-    headers: {
-      Authorization: `Bearer ${cleanToken}`,
-      'Content-Type': 'application/json',
-    },
-  });
 
-  if (!res.ok) {
-    const errorBody = await res.text();
-    throw new Error(`Supabase API error (${res.status}): ${errorBody || res.statusText}`);
+  // 1. Try Supabase Edge Function proxy (Server-to-Server, 0 CORS issues)
+  try {
+    const res = await fetch(EDGE_FUNCTION_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: ANON_KEY,
+        Authorization: `Bearer ${ANON_KEY}`,
+      },
+      body: JSON.stringify({ token: cleanToken }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data?.projects && Array.isArray(data.projects)) {
+        return data.projects.map((p: any) => ({
+          id: p.id,
+          name: p.name || `Project ${p.id}`,
+          region: p.region || 'unknown',
+          status: (p.status?.toUpperCase() === 'ACTIVE_HEALTHY' || p.status?.toUpperCase() === 'ACTIVE'
+            ? 'ACTIVE_HEALTHY'
+            : p.status?.toUpperCase() === 'PAUSED'
+            ? 'PAUSED'
+            : 'ACTIVE_HEALTHY') as SupabaseManagedProject['status'],
+          url: `https://${p.id}.supabase.co`,
+          dashboardUrl: `https://supabase.com/dashboard/project/${p.id}`,
+          accountEmail: emailLabel,
+          updatedAt: new Date().toISOString(),
+        }));
+      }
+    }
+  } catch {
+    // Continue to direct fetch attempt
   }
 
-  const projects = await res.json();
-  if (!Array.isArray(projects)) return [];
+  // 2. Direct fetch attempt
+  try {
+    const res = await fetch('https://api.supabase.com/v1/projects', {
+      headers: {
+        Authorization: `Bearer ${cleanToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  return projects.map((p: any) => ({
-    id: p.id,
-    name: p.name || `Project ${p.id}`,
-    region: p.region || 'unknown',
-    status: (p.status?.toUpperCase() || 'UNKNOWN') as SupabaseManagedProject['status'],
-    url: `https://${p.id}.supabase.co`,
-    dashboardUrl: `https://supabase.com/dashboard/project/${p.id}`,
-    accountEmail: emailLabel,
-    updatedAt: new Date().toISOString(),
-  }));
+    if (res.ok) {
+      const projects = await res.json();
+      if (Array.isArray(projects)) {
+        return projects.map((p: any) => ({
+          id: p.id,
+          name: p.name || `Project ${p.id}`,
+          region: p.region || 'unknown',
+          status: (p.status?.toUpperCase() === 'ACTIVE_HEALTHY' || p.status?.toUpperCase() === 'ACTIVE'
+            ? 'ACTIVE_HEALTHY'
+            : p.status?.toUpperCase() === 'PAUSED'
+            ? 'PAUSED'
+            : 'ACTIVE_HEALTHY') as SupabaseManagedProject['status'],
+          url: `https://${p.id}.supabase.co`,
+          dashboardUrl: `https://supabase.com/dashboard/project/${p.id}`,
+          accountEmail: emailLabel,
+          updatedAt: new Date().toISOString(),
+        }));
+      }
+    }
+  } catch {
+    // Throws clear error with actionable guidance
+    throw new Error(
+      'Browser CORS blocked direct token request. Please use "Add Database by Ref" below (e.g. paste your project ref like lnuijfoohwvunatwuqjx) to register your database directly!'
+    );
+  }
+
+  throw new Error('Could not fetch projects. Please enter project ref directly.');
 }
 
 // ──────────────── ACCOUNT MANAGEMENT ────────────────
@@ -150,27 +203,31 @@ export async function addOrUpdateSupabaseAccount(emailLabel: string, token: stri
 }
 
 /**
- * Adds a project manually under an account email (without PAT)
+ * Adds a project manually under an account email (without PAT) and checks live health probe
  */
-export function addManualSupabaseProject(
+export async function addManualSupabaseProject(
   accountEmail: string,
   projectName: string,
   refOrUrl: string
-): SupabaseManagedProject {
+): Promise<SupabaseManagedProject> {
   const ref = extractSupabaseRef(refOrUrl);
-  if (!ref) throw new Error('Invalid Supabase URL or Ref. Must be 20 chars or *.supabase.co');
+  if (!ref) throw new Error('Invalid Supabase URL or Ref. Must be 20 characters or *.supabase.co');
 
   const cleanEmail = accountEmail.trim() || 'Custom Account';
   const cleanName = projectName.trim() || `Supabase DB (${ref.slice(0, 6)})`;
+
+  // Probe live status
+  const health = await checkSupabaseHealth(`https://${ref}.supabase.co`).catch(() => null);
 
   const newProject: SupabaseManagedProject = {
     id: ref,
     name: cleanName,
     region: 'cloud',
-    status: 'ACTIVE_HEALTHY',
+    status: health?.status === 'paused' ? 'PAUSED' : 'ACTIVE_HEALTHY',
     url: `https://${ref}.supabase.co`,
     dashboardUrl: getSupabaseDashboardUrl(ref) || `https://supabase.com/dashboard/project/${ref}`,
     accountEmail: cleanEmail,
+    latencyMs: health?.latencyMs,
     updatedAt: new Date().toISOString(),
   };
 
@@ -225,14 +282,14 @@ export async function syncAllSupabaseAccounts(): Promise<{ totalAccounts: number
   let totalProjects = 0;
 
   for (const acc of accounts) {
-    if (acc.token) {
+    for (const p of acc.projects) {
       try {
-        const freshProjects = await fetchSupabaseProjectsFromToken(acc.token, acc.emailLabel);
-        acc.projects = freshProjects;
-        acc.lastSyncedAt = new Date().toISOString();
-        acc.error = undefined;
-      } catch (err: any) {
-        acc.error = err.message || 'Sync failed';
+        const health = await checkSupabaseHealth(p.url);
+        p.status = health.status === 'paused' ? 'PAUSED' : 'ACTIVE_HEALTHY';
+        p.latencyMs = health.latencyMs;
+        p.updatedAt = new Date().toISOString();
+      } catch {
+        // ignore probe error
       }
     }
     totalProjects += acc.projects.length;

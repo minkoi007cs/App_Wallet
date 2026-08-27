@@ -15,8 +15,8 @@ describe('Multi-Account Supabase Management Unit Tests', () => {
     assert.equal(accounts[0].emailLabel, 'minkoi007.cs@gmail.com');
   });
 
-  it('manually registers a project under an account', () => {
-    const project = addManualSupabaseProject(
+  it('manually registers a project under an account', async () => {
+    const project = await addManualSupabaseProject(
       'second.account@gmail.com',
       'House Renting DB',
       'lnuijfoohwvunatwuqjx'
