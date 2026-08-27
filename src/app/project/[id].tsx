@@ -24,8 +24,10 @@ import { LinkRepositoryModal } from '@/components/modals/LinkRepositoryModal';
 import { LinkVercelModal } from '@/components/modals/LinkVercelModal';
 import { HealthDiagnosticCard } from '@/components/health/HealthDiagnosticCard';
 import { AIAgentPromptModal } from '@/components/modals/AIAgentPromptModal';
+import { SetUrlsModal } from '@/components/modals/SetUrlsModal';
 import { checkSupabaseHealth, SupabaseHealthResult, getSupabaseDashboardUrl } from '@/services/supabaseStatus';
 import { autoDetectAndSaveProjectUrls, resetProjectDeploymentUrls } from '@/services/urlDetector';
+import { updateProject } from '@/services/projects';
 import { showToast } from '@/components/ui/Toast';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -50,6 +52,7 @@ export default function ProjectDetailScreen() {
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [showVercelModal, setShowVercelModal] = useState(false);
   const [showAIPromptModal, setShowAIPromptModal] = useState(false);
+  const [showSetUrlsModal, setShowSetUrlsModal] = useState(false);
   const [supabaseHealth, setSupabaseHealth] = useState<SupabaseHealthResult | null>(null);
   const [checkingDb, setCheckingDb] = useState(false);
   const [autoDetecting, setAutoDetecting] = useState(false);
@@ -123,6 +126,29 @@ export default function ProjectDetailScreen() {
       });
     } finally {
       setResettingUrls(false);
+    }
+  };
+
+  const handleSaveCustomUrls = async (urls: {
+    frontend_url: string | null;
+    backend_url: string | null;
+    supabase_url: string | null;
+  }) => {
+    try {
+      await updateProject(projectId, urls);
+      await reload();
+      showToast({
+        type: 'success',
+        title: 'URLs Updated',
+        message: 'Deployment & Supabase URLs saved successfully!',
+      });
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Update Failed',
+        message: err.message || 'Could not update project URLs.',
+      });
+      throw err;
     }
   };
 
@@ -329,7 +355,13 @@ export default function ProjectDetailScreen() {
                     Deployment & Service Links
                   </Text>
                 </View>
-                <View style={{ flexDirection: 'row', gap: 6 }}>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  <Button
+                    title="Edit URLs"
+                    onPress={() => setShowSetUrlsModal(true)}
+                    variant="primary"
+                    size="sm"
+                  />
                   <Button
                     title={autoDetecting ? 'Detecting...' : 'Auto-Detect'}
                     onPress={handleAutoDetectUrls}
@@ -338,7 +370,7 @@ export default function ProjectDetailScreen() {
                     size="sm"
                   />
                   <Button
-                    title={resettingUrls ? 'Resetting...' : 'Reset URLs'}
+                    title={resettingUrls ? 'Resetting...' : 'Reset'}
                     onPress={handleResetUrls}
                     loading={resettingUrls}
                     variant="ghost"
@@ -678,6 +710,15 @@ export default function ProjectDetailScreen() {
         projectId={projectId}
         projectName={project.name}
         onClose={() => setShowAIPromptModal(false)}
+      />
+
+      <SetUrlsModal
+        visible={showSetUrlsModal}
+        initialFrontendUrl={project.frontend_url}
+        initialBackendUrl={project.backend_url}
+        initialSupabaseUrl={project.supabase_url}
+        onClose={() => setShowSetUrlsModal(false)}
+        onSave={handleSaveCustomUrls}
       />
     </Container>
   );
