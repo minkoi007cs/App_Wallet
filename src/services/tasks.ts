@@ -33,7 +33,7 @@ async function requireAuth(): Promise<void> {
 export async function fetchTasksByProject(projectId: string): Promise<TaskWithSubtasks[]> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('tasks') as any)
+  const { data, error } = await (supabase.from('aw_tasks') as any)
     .select('*, subtasks:task_subtasks(*)')
     .eq('project_id', projectId)
     .order('created_at', { ascending: true });
@@ -56,7 +56,7 @@ export async function createTask(input: CreateTaskInput): Promise<TaskWithSubtas
     notes: input.notes || null,
   };
 
-  const { data, error } = await (supabase.from('tasks') as any)
+  const { data, error } = await (supabase.from('aw_tasks') as any)
     .insert(payload)
     .select('*, subtasks:task_subtasks(*)')
     .single();
@@ -69,7 +69,7 @@ export async function updateTask(id: string, updates: Partial<CreateTaskInput>):
   await requireAuth();
 
   const payload: TaskUpdate = { ...updates };
-  const { data, error } = await (supabase.from('tasks') as any)
+  const { data, error } = await (supabase.from('aw_tasks') as any)
     .update(payload)
     .eq('id', id)
     .select('*, subtasks:task_subtasks(*)')
@@ -86,7 +86,7 @@ export async function updateTaskStatus(id: string, status: TaskStatus): Promise<
 export async function deleteTask(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  const { error } = await supabase.from('aw_tasks').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -95,7 +95,7 @@ export async function deleteTask(id: string): Promise<void> {
 export async function addSubtask(taskId: string, title: string): Promise<SubtaskRow> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('task_subtasks') as any)
+  const { data, error } = await (supabase.from('aw_task_subtasks') as any)
     .insert({ task_id: taskId, title, is_completed: false })
     .select()
     .single();
@@ -107,9 +107,10 @@ export async function addSubtask(taskId: string, title: string): Promise<Subtask
 export async function toggleSubtask(subtaskId: string, _taskId: string, isCompleted: boolean): Promise<void> {
   await requireAuth();
 
-  const { error } = await (supabase.from('task_subtasks') as any)
+  const { error } = await (supabase.from('aw_task_subtasks') as any)
     .update({ is_completed: isCompleted })
     .eq('id', subtaskId);
 
   if (error) throw error;
 }
+

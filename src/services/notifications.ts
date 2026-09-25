@@ -31,7 +31,7 @@ export async function fetchNotifications(): Promise<{
 }> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('notifications') as any)
+  const { data, error } = await (supabase.from('aw_notifications') as any)
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export async function fetchNotifications(): Promise<{
 export async function markNotificationAsRead(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await (supabase.from('notifications') as any)
+  const { error } = await (supabase.from('aw_notifications') as any)
     .update({ is_read: true })
     .eq('id', id);
 
@@ -55,7 +55,7 @@ export async function markNotificationAsRead(id: string): Promise<void> {
 export async function markAllNotificationsAsRead(): Promise<void> {
   await requireAuth();
 
-  const { error } = await (supabase.from('notifications') as any)
+  const { error } = await (supabase.from('aw_notifications') as any)
     .update({ is_read: true })
     .eq('is_read', false);
 
@@ -65,7 +65,7 @@ export async function markAllNotificationsAsRead(): Promise<void> {
 export async function deleteNotification(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('notifications').delete().eq('id', id);
+  const { error } = await supabase.from('aw_notifications').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -74,7 +74,7 @@ export async function deleteNotification(id: string): Promise<void> {
 export async function fetchNotificationPreferences(): Promise<NotificationPreferenceRow> {
   const userId = await requireAuth();
 
-  const { data, error } = await (supabase.from('notification_preferences') as any)
+  const { data, error } = await (supabase.from('aw_notification_preferences') as any)
     .select('*')
     .eq('user_id', userId)
     .single();
@@ -88,7 +88,7 @@ export async function updateNotificationPreferences(
 ): Promise<NotificationPreferenceRow> {
   const userId = await requireAuth();
 
-  const { data, error } = await (supabase.from('notification_preferences') as any)
+  const { data, error } = await (supabase.from('aw_notification_preferences') as any)
     .upsert({
       user_id: userId,
       ...updates,
@@ -109,7 +109,7 @@ export async function generateAutomaticNotifications(): Promise<void> {
 
   for (const p of projects) {
     if (p.health_status === 'critical') {
-      const { error } = await (supabase.from('notifications') as any).insert({
+      const { error } = await (supabase.from('aw_notifications') as any).insert({
         user_id: userId,
         title: `🚨 Critical Alert: ${p.name}`,
         body: p.health_reasons?.[0] || 'Project health is critical.',
@@ -121,3 +121,4 @@ export async function generateAutomaticNotifications(): Promise<void> {
     }
   }
 }
+

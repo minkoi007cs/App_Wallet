@@ -45,7 +45,7 @@ async function requireAuth(): Promise<string> {
 export async function fetchProjects(filters: ProjectFilterOptions = {}): Promise<ProjectWithDetails[]> {
   await requireAuth();
 
-  let query = (supabase.from('projects') as any).select(
+  let query = (supabase.from('aw_projects') as any).select(
     '*, repositories:project_repositories(*), integrations:project_integrations(*)'
   );
 
@@ -84,7 +84,7 @@ export async function fetchProjects(filters: ProjectFilterOptions = {}): Promise
 export async function fetchProjectById(id: string): Promise<ProjectWithDetails | null> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('projects') as any)
+  const { data, error } = await (supabase.from('aw_projects') as any)
     .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
     .eq('id', id)
     .single();
@@ -121,14 +121,14 @@ export async function createProject(input: CreateProjectInput): Promise<ProjectW
     metadata: {},
   };
 
-  let { data, error } = await (supabase.from('projects') as any)
+  let { data, error } = await (supabase.from('aw_projects') as any)
     .insert(payload)
     .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
     .single();
 
   if (error && (error.code === '42703' || error.message?.includes('frontend_url'))) {
     const { frontend_url: _f, backend_url: _b, supabase_url: _s, ...basePayload } = payload;
-    const retry = await (supabase.from('projects') as any)
+    const retry = await (supabase.from('aw_projects') as any)
       .insert(basePayload)
       .select('*, repositories:project_repositories(*), integrations:project_integrations(*)')
       .single();
@@ -148,7 +148,7 @@ export async function updateProject(
 ): Promise<ProjectWithDetails> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('projects') as any)
+  const { data, error } = await (supabase.from('aw_projects') as any)
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
@@ -167,7 +167,7 @@ export async function updateProject(
 export async function deleteProject(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('projects').delete().eq('id', id);
+  const { error } = await supabase.from('aw_projects').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -191,3 +191,4 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const projects = await fetchProjects();
   return computeDashboardStats(projects);
 }
+

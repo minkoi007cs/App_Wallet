@@ -27,7 +27,7 @@ async function requireAuth(): Promise<void> {
 export async function fetchMilestonesByProject(projectId: string): Promise<MilestoneRow[]> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('milestones') as any)
+  const { data, error } = await (supabase.from('aw_milestones') as any)
     .select('*')
     .eq('project_id', projectId)
     .order('target_date', { ascending: true });
@@ -47,7 +47,7 @@ export async function createMilestone(input: CreateMilestoneInput): Promise<Mile
     target_date: input.target_date || null,
   };
 
-  const { data, error } = await (supabase.from('milestones') as any)
+  const { data, error } = await (supabase.from('aw_milestones') as any)
     .insert(payload)
     .select()
     .single();
@@ -60,7 +60,7 @@ export async function updateMilestone(id: string, updates: Partial<CreateMilesto
   await requireAuth();
 
   const payload: MilestoneUpdate = { ...updates };
-  const { data, error } = await (supabase.from('milestones') as any)
+  const { data, error } = await (supabase.from('aw_milestones') as any)
     .update(payload)
     .eq('id', id)
     .select()
@@ -73,6 +73,7 @@ export async function updateMilestone(id: string, updates: Partial<CreateMilesto
 export async function deleteMilestone(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('milestones').delete().eq('id', id);
+  const { error } = await supabase.from('aw_milestones').delete().eq('id', id);
   if (error) throw error;
 }
+

@@ -252,7 +252,7 @@ export async function fetchRealCommitInfo(owner: string, repo: string): Promise<
 export async function fetchProjectRepositories(projectId: string): Promise<RepoRow[]> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('project_repositories') as any)
+  const { data, error } = await (supabase.from('aw_project_repositories') as any)
     .select('*')
     .eq('project_id', projectId);
 
@@ -286,7 +286,7 @@ export async function linkRepositoryToProject(input: LinkRepoInput): Promise<Rep
     metadata: {},
   };
 
-  const { data, error } = await (supabase.from('project_repositories') as any)
+  const { data, error } = await (supabase.from('aw_project_repositories') as any)
     .insert(payload)
     .select()
     .single();
@@ -298,7 +298,7 @@ export async function linkRepositoryToProject(input: LinkRepoInput): Promise<Rep
 export async function unlinkRepositoryFromProject(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('project_repositories').delete().eq('id', id);
+  const { error } = await supabase.from('aw_project_repositories').delete().eq('id', id);
   if (error) throw error;
 }
 
@@ -307,7 +307,7 @@ export async function unlinkRepositoryFromProject(id: string): Promise<void> {
 export async function fetchProjectActivityEvents(projectId?: string): Promise<ActivityEventRow[]> {
   await requireAuth();
 
-  let query = (supabase.from('activity_events') as any)
+  let query = (supabase.from('aw_activity_events') as any)
     .select('*')
     .order('created_at', { ascending: false });
 
@@ -364,3 +364,4 @@ export async function importAllGitHubReposAsProjects(): Promise<number> {
 
   return importedCount;
 }
+

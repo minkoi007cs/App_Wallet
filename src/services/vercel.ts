@@ -97,7 +97,7 @@ async function requireAuth(): Promise<void> {
 export async function fetchProjectIntegrations(projectId: string): Promise<IntegrationRow[]> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('project_integrations') as any)
+  const { data, error } = await (supabase.from('aw_project_integrations') as any)
     .select('*')
     .eq('project_id', projectId);
 
@@ -192,7 +192,7 @@ export async function linkVercelProjectToApp(input: LinkVercelInput): Promise<In
     metadata: {},
   };
 
-  const { data, error } = await (supabase.from('project_integrations') as any)
+  const { data, error } = await (supabase.from('aw_project_integrations') as any)
     .insert(payload)
     .select()
     .single();
@@ -204,6 +204,7 @@ export async function linkVercelProjectToApp(input: LinkVercelInput): Promise<In
 export async function unlinkVercelProjectFromApp(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('project_integrations').delete().eq('id', id);
+  const { error } = await supabase.from('aw_project_integrations').delete().eq('id', id);
   if (error) throw error;
 }
+

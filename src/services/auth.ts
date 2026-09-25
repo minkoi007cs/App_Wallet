@@ -39,7 +39,7 @@ export async function signOut() {
 
 export async function getProfile(userId: string) {
   const { data, error } = await supabase
-    .from('profiles')
+    .from('aw_profiles')
     .select('*')
     .eq('id', userId)
     .single();
@@ -52,7 +52,7 @@ export async function updateProfile(updates: { full_name?: string; avatar_url?: 
   const { data: session } = await supabase.auth.getSession();
   if (!session?.session?.user) throw new Error('Not authenticated. Please sign in.');
 
-  const { data, error } = await (supabase.from('profiles') as any)
+  const { data, error } = await (supabase.from('aw_profiles') as any)
     .update(updates)
     .eq('id', session.session.user.id)
     .select()
@@ -61,3 +61,4 @@ export async function updateProfile(updates: { full_name?: string; avatar_url?: 
   if (error) throw error;
   return data;
 }
+

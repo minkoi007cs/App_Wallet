@@ -24,7 +24,7 @@ async function requireAuth(): Promise<void> {
 export async function fetchJournalByProject(projectId: string): Promise<JournalRow[]> {
   await requireAuth();
 
-  const { data, error } = await (supabase.from('journal_entries') as any)
+  const { data, error } = await (supabase.from('aw_journal_entries') as any)
     .select('*')
     .eq('project_id', projectId)
     .order('created_at', { ascending: false });
@@ -43,7 +43,7 @@ export async function createJournalEntry(input: CreateJournalInput): Promise<Jou
     tags: input.tags,
   };
 
-  const { data, error } = await (supabase.from('journal_entries') as any)
+  const { data, error } = await (supabase.from('aw_journal_entries') as any)
     .insert(payload)
     .select()
     .single();
@@ -56,7 +56,7 @@ export async function updateJournalEntry(id: string, updates: Partial<CreateJour
   await requireAuth();
 
   const payload: JournalUpdate = { ...updates };
-  const { data, error } = await (supabase.from('journal_entries') as any)
+  const { data, error } = await (supabase.from('aw_journal_entries') as any)
     .update(payload)
     .eq('id', id)
     .select()
@@ -69,6 +69,7 @@ export async function updateJournalEntry(id: string, updates: Partial<CreateJour
 export async function deleteJournalEntry(id: string): Promise<void> {
   await requireAuth();
 
-  const { error } = await supabase.from('journal_entries').delete().eq('id', id);
+  const { error } = await supabase.from('aw_journal_entries').delete().eq('id', id);
   if (error) throw error;
 }
+

@@ -17,7 +17,7 @@ export type HealthState = 'healthy' | 'needs_attention' | 'critical';
 export interface Database {
   public: {
     Tables: {
-      profiles: {
+      aw_profiles: {
         Row: {
           id: string;
           email: string;
@@ -43,7 +43,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      projects: {
+      aw_projects: {
         Row: {
           id: string;
           user_id: string;
@@ -108,7 +108,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      project_repositories: {
+      aw_project_repositories: {
         Row: {
           id: string;
           project_id: string;
@@ -179,7 +179,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      project_integrations: {
+      aw_project_integrations: {
         Row: {
           id: string;
           project_id: string;
@@ -226,7 +226,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      tasks: {
+      aw_tasks: {
         Row: {
           id: string;
           project_id: string;
@@ -267,7 +267,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      task_subtasks: {
+      aw_task_subtasks: {
         Row: {
           id: string;
           task_id: string;
@@ -290,7 +290,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      milestones: {
+      aw_milestones: {
         Row: {
           id: string;
           project_id: string;
@@ -322,7 +322,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      journal_entries: {
+      aw_journal_entries: {
         Row: {
           id: string;
           project_id: string;
@@ -351,7 +351,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      activity_events: {
+      aw_activity_events: {
         Row: {
           id: string;
           project_id: string;
@@ -380,7 +380,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      notifications: {
+      aw_notifications: {
         Row: {
           id: string;
           user_id: string;
@@ -412,7 +412,7 @@ export interface Database {
           created_at?: string;
         };
       };
-      notification_preferences: {
+      aw_notification_preferences: {
         Row: {
           user_id: string;
           github_activity: boolean;
@@ -444,7 +444,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      external_accounts: {
+      aw_external_accounts: {
         Row: {
           id: string;
           user_id: string;
@@ -485,7 +485,7 @@ export interface Database {
           updated_at?: string;
         };
       };
-      sync_state: {
+      aw_sync_state: {
         Row: {
           id: string;
           user_id: string;
@@ -517,3 +517,4 @@ export interface Database {
     };
   };
 }
+
